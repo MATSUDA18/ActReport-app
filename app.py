@@ -18,7 +18,7 @@ activities = {
 }
 
 # 選択フォーム（曜日）
-selected_days = st.multiselect("活動した曜日を選択してください", list(activities.keys()))
+selected_days = st.multiselect("① 活動した曜日を選択してください", list(activities.keys()))
 
 # --- 曜日ごとの同行者設定 ---
 day_attendees = {}
@@ -27,7 +27,7 @@ if selected_days:
     attendee_options = ["なし", "森はるひさ県議", "宮川しょうけん市議", "瑞穂市議の皆様"]
     
     for day in selected_days:
-        chosen = st.multiselect(f"【{day}曜日】の同行者を選択（複数可、なしの場合は「なし」を選択）", attendee_options, default=["なし"])
+        chosen = st.multiselect(f"【{day}曜日】の同行者（複数可、なしは「なし」）", attendee_options, default=["なし"], key=f"att_{day}")
         day_attendees[day] = chosen
 
 # --- 冒頭の挨拶（書き出し）の選択 ---
@@ -40,7 +40,7 @@ greeting_options = [
     "本日は今週の活動報告をまとめてさせていただきます。",
     "選択なし"
 ]
-selected_greeting = st.selectbox("原稿の冒頭の挨拶を選んでください", greeting_options)
+selected_greeting = st.selectbox("② 原稿の冒頭の挨拶を選んでください", greeting_options)
 
 # --- プリセット画像の保存フォルダ準備 ---
 IMAGE_DIR = "preset_images"
@@ -50,33 +50,19 @@ if not os.path.exists(IMAGE_DIR):
 # --- プリセット画像の読み込み ---
 saved_images = sorted(os.listdir(IMAGE_DIR))
 
-# --- 【変更】曜日ごとの画像選択機能（iPhoneでも確実に横3列に並ぶHTMLテーブル方式） ---
+# --- 曜日ごとの画像選択機能（iPhoneでも綺麗に横3列に並ぶ方式） ---
 day_selected_images = {}
 
 if selected_days:
     st.markdown("---")
-    st.subheader("🖼️ 曜日ごとの画像選択")
-    st.info("選択した曜日ごとに、使いたい画像にチェックを入れてください。")
+    st.subheader("🖼️ ③ 曜日ごとの画像選択")
+    st.caption("※選択したあと、画面の余白をタップするとリストが閉じます")
     
     if saved_images:
         for day in selected_days:
-            st.markdown(f"#### 📅 【{day}曜日】に載せる画像")
+            st.markdown(f"**📅 【{day}曜日】に載せる画像**")
             
-            # iPhoneでも崩れず必ず横3列に並ぶHTMLテーブルを構築
-            html_code = "<table style='width:100%; border:none;'><tr>"
-            for i, img_name in enumerate(saved_images):
-                if i > 0 and i % 3 == 0:
-                    html_code += "</tr><tr>"
-                
-                # 画像のパス（Streamlit上で表示させるためプレースホルダー的に処理）
-                img_path = os.path.join(IMAGE_DIR, img_name)
-                html_code += f"<td style='text-align:center; padding:5px; width:33%;'>"
-                html_code += f"<b>No.{i+1}</b><br>"
-                html_code += f"</td>"
-            html_code += "</tr></table>"
-            
-            # サムネイルをプレビューしつつ、下のチェックボックスで選べるようにする
-            # Streamlitのエレメントを3つずつ綺麗に並べる
+            # スマホで見やすい3列グリッド
             cols = st.columns(3)
             day_chosen_imgs = []
             
@@ -86,22 +72,22 @@ if selected_days:
                 with cols[col_idx]:
                     try:
                         img = Image.open(img_path)
-                        # iPhoneで見やすい小さめサイズ
-                        st.image(img, width=80)
+                        st.image(img, width=75)
                     except Exception:
                         pass
                     
-                    is_checked = st.checkbox(f"選択", key=f"chk_{day}_{img_name}")
+                    is_checked = st.checkbox(f"選択 {i+1}", key=f"chk_{day}_{img_name}")
                     if is_checked:
                         day_chosen_imgs.append(img_name)
             
             day_selected_images[day] = day_chosen_imgs
-            st.markdown("---")
+            st.write("") # 余白
     else:
         st.info("登録済みの画像がありません。画面一番下の「画像の管理」から画像を追加してください。")
 
 # --- 原稿生成ボタン ---
-if st.button("原稿を生成"):
+st.markdown("---")
+if st.button("📝 原稿を生成する", type="primary"):
     report_text = ""
     if selected_greeting != "選択なし":
         report_text += f"{selected_greeting}\n\n"
@@ -131,7 +117,6 @@ if st.button("原稿を生成"):
     
     # 曜日ごとの選択画像確認
     st.markdown("#### 📁 曜日ごとに選択された画像一覧")
-    total_selected_count = 0
     for day in selected_days:
         imgs = day_selected_images.get(day, [])
         if imgs:
@@ -141,8 +126,7 @@ if st.button("原稿を生成"):
                 with cols_prev[idx % 3]:
                     img_path = os.path.join(IMAGE_DIR, img_name)
                     if os.path.exists(img_path):
-                        st.image(Image.open(img_path), width=100)
-                total_selected_count += 1
+                        st.image(Image.open(img_path), width=90)
         else:
             st.write(f"**【{day}曜日】の画像:** なし")
 
@@ -152,7 +136,7 @@ if "final_post_text" in st.session_state:
     encoded_text = urllib.parse.quote(text_to_share)
     
     st.markdown("---")
-    st.subheader("SNSへ投稿する")
+    st.subheader("🚀 SNSへ投稿する")
     
     sns_choice = st.selectbox(
         "投稿方法・送り先を選んでください",
