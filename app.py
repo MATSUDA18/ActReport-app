@@ -47,7 +47,7 @@ IMAGE_DIR = "preset_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
-# --- 画像の選択（アイコン・サムネイル表示対応） ---
+# --- 画像の選択（ファイル名なし・スマホで3列アイコン選択） ---
 st.markdown("---")
 st.subheader("🖼️ 画像の選択")
 image_mode = st.radio("画像の選び方を選んでください", ["登録済みの画像から選ぶ（アイコン選択）", "今回の投稿用の画像を新しくアップロードする"])
@@ -58,7 +58,7 @@ if image_mode == "登録済みの画像から選ぶ（アイコン選択）":
     saved_images = sorted(os.listdir(IMAGE_DIR))
     if saved_images:
         st.write("使いたい画像にチェックを入れてください：")
-        # 横に並べて見やすくするためのカラム分割
+        # 1行に3つ並べるため、3カラムに分割
         cols = st.columns(3)
         selected_images = []
         for i, img_name in enumerate(saved_images):
@@ -66,12 +66,13 @@ if image_mode == "登録済みの画像から選ぶ（アイコン選択）":
             with cols[i % 3]:
                 try:
                     img = Image.open(img_path)
-                    st.image(img, width=100)
+                    # スマホで見やすいよう小さめのサイズ（幅80ピクセル程度）に調整
+                    st.image(img, width=80)
                 except Exception:
-                    st.write(f"({img_name})")
+                    pass
                 
-                # チェックボックスで選択
-                is_checked = st.checkbox(img_name, key=f"chk_{img_name}")
+                # ファイル名を隠し、番号やシンプルなチェックボックスにする
+                is_checked = st.checkbox(f"選択 {i+1}", key=f"chk_{img_name}")
                 if is_checked:
                     selected_images.append(img_name)
     else:
@@ -115,11 +116,11 @@ if st.button("原稿を生成"):
         st.write(f"選択された画像数: {len(selected_images)}枚")
         for img in selected_images:
             if hasattr(img, "name"):
-                st.image(img, width=150)
+                st.image(img, width=120)
             else:
                 img_path = os.path.join(IMAGE_DIR, img)
                 if os.path.exists(img_path):
-                    st.image(img_path, width=150)
+                    st.image(img_path, width=120)
 
 # --- SNS直接投稿・一括投稿メニュー ---
 if "final_post_text" in st.session_state:
@@ -152,7 +153,7 @@ if "final_post_text" in st.session_state:
         fb_url = f"https://www.facebook.com/sharer/sharer.php?u=&quote={encoded_text}"
         st.markdown(f"[📘 Facebookのシェア画面を開く]({fb_url})", unsafe_allow_html=True)
 
-# --- 【一番下に移動】画像の登録・削除管理機能 ---
+# --- 一番下の画像の登録・削除管理機能 ---
 st.markdown("---")
 with st.expander("⚙️ 【普段は閉じています】用意された画像の登録・削除管理"):
     new_preset = st.file_uploader("新しいプリセット画像を登録する（複数可）", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="preset_upload")
