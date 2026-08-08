@@ -6,7 +6,7 @@ from PIL import Image
 
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
-# --- 完全に横3列に収めるための強力なスリム化スタイル ---
+# --- スマホ画面で必ず横3列にスッキリ収めるための強化スタイル ---
 st.markdown("""
 <style>
 /* アプリ全体の背景色（淡いオレンジ・ピーチトーン） */
@@ -14,38 +14,38 @@ st.markdown("""
     background-color: #FFF6F0;
 }
 
-/* スマホでも確実に横3列（各カラム幅約31%）で並ぶように強制固定 */
+/* スマホでもカラムを絶対に横3列に強制固定する */
 @media screen and (max-width: 768px) {
     div[data-testid="stHorizontal"],
     div[data-testid="horizontalBlock"],
     .stHorizontal {
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: wrap !important;
+        flex-wrap: nowrap !important;
         width: 100% !important;
-        gap: 1px !important;
+        gap: 4px !important;
     }
     
     div[data-testid="stHorizontal"] > div[data-testid="stColumn"],
     div[data-testid="stHorizontal"] > div[data-testid="column"],
     div[data-testid="horizontalBlock"] > div,
     .stColumn {
-        width: 31% !important;
-        min-width: 31% !important;
-        max-width: 32% !important;
-        flex: 1 1 31% !important;
-        padding: 1px !important;
+        width: 32% !important;
+        min-width: 32% !important;
+        max-width: 33% !important;
+        flex: 1 1 32% !important;
+        padding: 0px !important;
         box-sizing: border-box !important;
     }
 }
 
-/* サムネイルを囲む「箱（スペース）」をスリムにし、縦長比率でコンパクトに配置 */
+/* サムネイルを囲むスペースと画像をコンパクトな縦長にスリム化 */
 div[data-testid="stColumn"] img,
 .stColumn img {
-    max-width: 100% !important;
-    height: 65px !important; /* 高さをよりコンパクトに */
-    object-fit: contain !important;
-    background-color: #faebe2; /* 優しい色味の背景 */
+    width: 75px !important;  /* 横幅を小さく固定して3列に収める */
+    height: 100px !important; /* 縦長比率を維持 */
+    object-fit: cover !important;
+    background-color: #faebe2;
     border-radius: 4px;
     display: block;
     margin: 0 auto;
@@ -125,17 +125,17 @@ if not os.path.exists(TEMP_DIR):
 saved_images = sorted(os.listdir(IMAGE_DIR))
 day_selected_images = {}
 
-# ③ 曜日ごとの画像選択（横3列スリム・縦長比率維持）
+# ③ 曜日ごとの画像選択（横3列スリム・縦長比率・サイズ小型化）
 if selected_days:
     st.markdown("---")
     st.markdown("#### 🖼️ ③ 曜日ごとの画像選択")
-    st.caption("※スリム化された横3列の固定画像からサクッと選べます。")
+    st.caption("※縦長のコンパクトなサムネイルが横3列に並びます。")
     
     for day in selected_days:
         st.markdown(f"**📅 【{day}曜日】の画像**")
         day_chosen_imgs = []
         
-        # 1. 固定画像（横3列スリム表示）
+        # 1. 固定画像（横3列・小型縦長表示）
         if saved_images:
             st.write("・登録済み画像から選択（横3列）:")
             for i in range(0, len(saved_images), 3):
@@ -145,7 +145,8 @@ if selected_days:
                     with cols[col_idx]:
                         img_path = os.path.join(IMAGE_DIR, img_name)
                         try:
-                            st.image(Image.open(img_path), use_container_width=True)
+                            # 幅を75pxに固定してスリムに表示
+                            st.image(Image.open(img_path), width=75)
                         except Exception:
                             pass
                         is_checked = st.checkbox(f"選択 {i+col_idx+1}", key=f"chk_{day}_{img_name}")
@@ -174,7 +175,7 @@ if selected_days:
                         tw.write(uf.getbuffer())
                     with cols_add[col_idx]:
                         try:
-                            st.image(Image.open(temp_path), use_container_width=True)
+                            st.image(Image.open(temp_path), width=75)
                         except Exception:
                             pass
                         is_added_checked = st.checkbox(f"追加 {i+col_idx+1}", key=f"chk_temp_{day}_{uf.name}", value=True)
@@ -226,7 +227,7 @@ if "final_post_text" in st.session_state:
                 for idx, (img_name, img_path) in enumerate(row_imgs):
                     with cols_prev[idx]:
                         if os.path.exists(img_path):
-                            st.image(Image.open(img_path), use_container_width=True)
+                            st.image(Image.open(img_path), width=75)
         else:
             st.write(f"**【{day}曜日】の画像:** なし")
 
