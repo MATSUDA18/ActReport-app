@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 import urllib.parse
 import os
+from PIL import Image
 
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
@@ -26,7 +27,6 @@ if selected_days:
     attendee_options = ["なし", "森はるひさ県議", "宮川しょうけん市議", "瑞穂市議の皆様"]
     
     for day in selected_days:
-        # 曜日ごとにセレクトボックスまたはマルチセレクトで同行者を選ぶ
         chosen = st.multiselect(f"【{day}曜日】の同行者を選択（複数可、なしの場合は「なし」を選択）", attendee_options, default=["なし"])
         day_attendees[day] = chosen
 
@@ -47,53 +47,41 @@ IMAGE_DIR = "preset_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
-# --- 画像の登録・削除管理機能 ---
+# --- 画像の選択（アイコン・サムネイル表示対応） ---
 st.markdown("---")
-st.subheader("🖼️ 用意された画像の管理（登録・削除）")
-with st.expander("▶ クリックして画像の追加・削除メニューを開く"):
-    # 新規画像のアップロード登録
-    new_preset = st.file_uploader("新しいプリセット画像を登録する（複数可）", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="preset_upload")
-    if new_preset:
-        for f in new_preset:
-            save_path = os.path.join(IMAGE_DIR, f.name)
-            with open(save_path, "wb") as w:
-                w.write(f.getbuffer())
-        st.success("新しい画像を登録しました！")
-    
-    # 既存の登録済み画像の一覧と削除
-    existing_images = os.listdir(IMAGE_DIR)
-    if existing_images:
-        st.write("現在登録されている画像:")
-        for img_name in existing_images:
-            col_a, col_b = st.columns([3, 1])
-            with col_a:
-                st.write(f"・ {img_name}")
-            with col_b:
-                if st.button("削除", key=f"del_{img_name}"):
-                    os.remove(os.path.join(IMAGE_DIR, img_name))
-                    st.rerun()
-    else:
-        st.info("登録されている画像はありません。上のフォームから画像を追加してください。")
-
-# --- 画像の選択 ---
-st.markdown("---")
-st.subheader("画像の選択")
-image_mode = st.radio("画像の選び方を選んでください", ["登録済みの画像から選ぶ", "今回の投稿用の画像を新しくアップロードする"])
+st.subheader("🖼️ 画像の選択")
+image_mode = st.radio("画像の選び方を選んでください", ["登録済みの画像から選ぶ（アイコン選択）", "今回の投稿用の画像を新しくアップロードする"])
 
 selected_images = []
 
-if image_mode == "登録済みの画像から選ぶ":
-    saved_images = os.listdir(IMAGE_DIR)
+if image_mode == "登録済みの画像から選ぶ（アイコン選択）":
+    saved_images = sorted(os.listdir(IMAGE_DIR))
     if saved_images:
-        selected_images = st.multiselect("登録済み画像から選択（複数可）", saved_images)
+        st.write("使いたい画像にチェックを入れてください：")
+        # 横に並べて見やすくするためのカラム分割
+        cols = st.columns(3)
+        selected_images = []
+        for i, img_name in enumerate(saved_images):
+            img_path = os.path.join(IMAGE_DIR, img_name)
+            with cols[i % 3]:
+                try:
+                    img = Image.open(img_path)
+                    st.image(img, width=100)
+                except Exception:
+                    st.write(f"({img_name})")
+                
+                # チェックボックスで選択
+                is_checked = st.checkbox(img_name, key=f"chk_{img_name}")
+                if is_checked:
+                    selected_images.append(img_name)
     else:
-        st.warning("登録済みの画像がありません。上の「画像の管理」から画像を追加してください。")
+        st.info("登録済みの画像がありません。画面一番下の「画像の管理」から画像を追加してください。")
 else:
     uploaded_files = st.file_uploader("今回の投稿用画像をアップロード（複数可）", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="post_upload")
     if uploaded_files:
         selected_images = uploaded_files
 
-# --- 原稿生成 ---
+# --- 原稿生成ボタン ---
 if st.button("原稿を生成"):
     report_text = ""
     if selected_greeting != "選択なし":
@@ -101,16 +89,13 @@ if st.button("原稿を生成"):
     
     report_text += "【活動報告】\n\n"
     
-    # 曜日ごとのループ
     for day in selected_days:
         loc = activities[day]
         att_list = day_attendees.get(day, ["なし"])
         
-        # 「なし」が含まれている、または空の場合
         if "なし" in att_list or not att_list:
             report_text += f"{day}曜日は{loc}にて活動を行いました。\n"
         else:
-            # 「なし」以外の同行者が選ばれている場合
             actual_att = [a for a in att_list if a != "なし"]
             if not actual_att:
                 report_text += f"{day}曜日は{loc}にて活動を行いました。\n"
@@ -118,7 +103,6 @@ if st.button("原稿を生成"):
                 attendee_str = f"、{', '.join(actual_att)}の皆様"
                 report_text += f"{day}曜日は{loc}にて{attendee_str}と活動を行いました。\n"
     
-    # ハッシュタグ
     hashtags = "\n#瑞穂市 #福祉 #障がい福祉 #WithYou #松田けんじ"
     final_post_text = report_text + hashtags
     
@@ -167,3 +151,33 @@ if "final_post_text" in st.session_state:
     if "Facebook" in sns_choice or "すべて" in sns_choice:
         fb_url = f"https://www.facebook.com/sharer/sharer.php?u=&quote={encoded_text}"
         st.markdown(f"[📘 Facebookのシェア画面を開く]({fb_url})", unsafe_allow_html=True)
+
+# --- 【一番下に移動】画像の登録・削除管理機能 ---
+st.markdown("---")
+with st.expander("⚙️ 【普段は閉じています】用意された画像の登録・削除管理"):
+    new_preset = st.file_uploader("新しいプリセット画像を登録する（複数可）", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="preset_upload")
+    if new_preset:
+        for f in new_preset:
+            save_path = os.path.join(IMAGE_DIR, f.name)
+            with open(save_path, "wb") as w:
+                w.write(f.getbuffer())
+        st.success("新しい画像を登録しました！ページを更新して反映させてください。")
+    
+    existing_images = os.listdir(IMAGE_DIR)
+    if existing_images:
+        st.write("現在登録されている画像:")
+        for img_name in existing_images:
+            col_a, col_b, col_c = st.columns([1, 2, 1])
+            with col_a:
+                try:
+                    st.image(os.path.join(IMAGE_DIR, img_name), width=50)
+                except:
+                    pass
+            with col_b:
+                st.write(img_name)
+            with col_c:
+                if st.button("削除", key=f"del_{img_name}"):
+                    os.remove(os.path.join(IMAGE_DIR, img_name))
+                    st.rerun()
+    else:
+        st.info("登録されている画像はありません。上のフォームから画像を追加してください。")
