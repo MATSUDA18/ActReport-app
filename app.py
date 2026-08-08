@@ -1,9 +1,12 @@
 import streamlit as st
 import datetime
+import urllib.parse
 
+# 画面幅を広く使ってスマホ表示を安定させる
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
-st.title("活動報告投稿アプリ")
+# --- タイトルを1行でスッキリ綺麗に表示するための調整 ---
+st.markdown("<h2 style='text-align: left; font-size: 24px;'>活動報告投稿アプリ</h2>", unsafe_allow_html=True)
 
 # 曜日と場所の定義
 activities = {
@@ -20,6 +23,18 @@ selected_days = st.multiselect("活動した曜日を選択してください", 
 attendee_options = ["森はるひさ県議", "宮川しょうけん市議", "瑞穂市議の皆様"]
 attendees = st.multiselect("同行者を選択（選択しない場合は空欄にしてください）", attendee_options)
 
+# --- 冒頭の挨拶（書き出し）の選択 ---
+greeting_options = [
+    "おはようございます！",
+    "こんにちは！",
+    "皆様お疲れ様です。",
+    "本日はまとめて活動報告をさせていただきます。",
+    "本日はここ数日の活動報告をさせていただきます。",
+    "本日は今週の活動報告をまとめてさせていただきます。",
+    "選択なし"
+]
+selected_greeting = st.selectbox("原稿の冒頭の挨拶を選んでください", greeting_options)
+
 # --- 画像選択・アップロード機能 ---
 st.subheader("画像の選択")
 image_mode = st.radio("画像の選び方を選んでください", ["決まった画像（約10枚）から選ぶ", "新しい画像をアップロードする"])
@@ -27,7 +42,6 @@ image_mode = st.radio("画像の選び方を選んでください", ["決まっ�
 selected_images = []
 
 if image_mode == "決まった画像（約10枚）から選ぶ":
-    # 決まった画像のサンプルリスト（必要に応じてファイル名やパスを変更できます）
     preset_images = [f"sample_{i}.jpg" for i in range(1, 11)]
     selected_images = st.multiselect("用意された画像から選択（複数可）", preset_images)
 else:
@@ -37,12 +51,15 @@ else:
 
 # --- 原稿生成 ---
 if st.button("原稿を生成"):
-    report_text = "【活動報告】\n\n"
+    # 冒頭の挨拶の組み立て
+    report_text = ""
+    if selected_greeting != "選択なし":
+        report_text += f"{selected_greeting}\n\n"
+    
+    report_text += "【活動報告】\n\n"
     
     # 同行者が誰も選択されていない場合の判定
     if len(attendees) == 0:
-        # 本文を作らずハッシュタグのみ、あるいはシンプルな形式にする
-        report_text = ""
         for day in selected_days:
             loc = activities[day]
             report_text += f"{day}曜日は{loc}にて活動を行いました。\n\n"
@@ -56,34 +73,49 @@ if st.button("原稿を生成"):
     hashtags = "\n#瑞穂市 #福祉 #障がい福祉 #WithYou #松田けんじ"
     final_post_text = report_text + hashtags
     
+    # セッション状態に保存してSNSボタン等でも使えるようにする
+    st.session_state["final_post_text"] = final_post_text
+    
     st.text_area("生成された原稿（確認・編集用）", final_post_text, height=200)
     
     # 選択された画像のプレビュー表示
     if selected_images:
         st.write(f"選択された画像数: {len(selected_images)}枚")
-        # 簡易的にアップロードされたファイルを表示
         for img in selected_images:
-            if hasattr(img, "name"): # アップロードされたファイルの場合
+            if hasattr(img, "name"):
                 st.image(img, width=150)
-            else: # プリセット画像名の場合
+            else:
                 st.write(f"・{img}")
 
-    # --- SNS直接投稿（連携ボタン） ---
+# 投稿用のテキストがすでにある場合（ボタンを押したあと保持する用）
+if "final_post_text" in st.session_state:
+    text_to_share = st.session_state["final_post_text"]
+    encoded_text = urllib.parse.quote(text_to_share)
+    
+    # --- SNS直接投稿・一括投稿の選択メニュー ---
     st.markdown("---")
     st.subheader("SNSへ投稿する")
-    st.info("※各SNSの仕様上、テキストのコピーや公式の投稿画面への連携を行います。")
     
-    # X（旧Twitter）用の投稿リンク作成
-    import urllib.parse
-    encoded_text = urllib.parse.quote(final_post_text)
-    x_url = f"https://twitter.com/intent/tweet?text={encoded_text}"
+    # 投稿先の選択肢に「すべて一括」を追加
+    sns_choice = st.selectbox(
+        "投稿方法・送り先を選んでください",
+        [
+            "𝕏 (Twitter) で投稿する",
+            "Instagramを開いて投稿する（テキスト自動コピー）",
+            "Facebookでシェアする",
+            "🚀 すべてのSNS（X・Instagram・FB）へまとめて準備・一括投稿する"
+        ]
+    )
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(f"[𝕏 (Twitter) で投稿]({x_url})" , unsafe_allow_html=True)
-    with col2:
-        if st.button("Instagram用テキストをコピー"):
-            st.success("テキストをコピーしました！（スマホやPCの機能で貼り付けてください）")
-    with col3:
-        if st.button("Facebook用テキストをコピー"):
-            st.success("Facebook用の準備ができました！")
+    if "𝕏 (Twitter)" in sns_choice or "すべて" in sns_choice:
+        x_url = f"https://twitter.com/intent/tweet?text={encoded_text}"
+        st.markdown(f"[🐦 𝕏 (Twitter) の投稿画面を開く]({x_url})", unsafe_allow_html=True)
+        
+    if "Instagram" in sns_choice or "すべて" in sns_choice:
+        st.info("Instagramはセキュリティ上、文章を直接ハメ込んで開けないため、下のボタンでテキストをコピーしてからInstagramアプリを開いてください。")
+        st.code(text_to_share, language="text")
+        st.markdown("[📷 Instagramアプリを開く（※上のテキストをコピーしてから開いてください）](https://www.instagram.com/)", unsafe_allow_html=True)
+        
+    if "Facebook" in sns_choice or "すべて" in sns_choice:
+        fb_url = f"https://www.facebook.com/sharer/sharer.php?u=&quote={encoded_text}"
+        st.markdown(f"[📘 Facebookのシェア画面を開く]({fb_url})", unsafe_allow_html=True)
