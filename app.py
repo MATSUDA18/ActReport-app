@@ -6,6 +6,23 @@ from PIL import Image
 
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
+# --- iPhoneでもサムネイルが必ず横に3つ並ぶようにする強力なスマホ対応スタイル ---
+st.markdown("""
+<style>
+/* スマホ・PC問わずカラムを強制的に3等分する */
+[data-testid="column"] {
+    width: 33.333% !important;
+    flex: 0 0 33.333% !important;
+    min-width: 0px !important;
+    padding: 2px !important;
+}
+/* 画像のサムネイルを綺麗に収める */
+img {
+    border-radius: 4px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # --- タイトルを1行でスッキリ綺麗に表示 ---
 st.markdown("<h2 style='text-align: left; font-size: 24px;'>活動報告投稿アプリ</h2>", unsafe_allow_html=True)
 
@@ -47,46 +64,77 @@ IMAGE_DIR = "preset_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
+# 一時的なアップロード保存用フォルダ
+TEMP_DIR = "temp_uploads"
+if not os.path.exists(TEMP_DIR):
+    os.makedirs(TEMP_DIR)
+
 # --- プリセット画像の読み込み ---
 saved_images = sorted(os.listdir(IMAGE_DIR))
 
-# --- 曜日ごとの画像選択機能（iPhoneでも綺麗に横3列に並ぶ方式） ---
+# --- 曜日ごとの画像選択機能（横3列固定 ＆ スマホアルバムからの追加対応） ---
 day_selected_images = {}
 
 if selected_days:
     st.markdown("---")
     st.subheader("🖼️ ③ 曜日ごとの画像選択")
-    st.caption("※選択したあと、画面の余白をタップするとリストが閉じます")
+    st.caption("※用意された画像からの選択、またはその場でスマホのアルバムから写真を追加して選べます。")
     
-    if saved_images:
-        for day in selected_days:
-            st.markdown(f"**📅 【{day}曜日】に載せる画像**")
-            
-            # スマホで見やすい3列グリッド
-            cols = st.columns(3)
+    for day in selected_days:
+        st.markdown(f"**📅 【{day}曜日】の画像を選択**")
+        
+        # 1. その場でスマホのアルバムから自由に追加する機能
+        day_temp_key = f"day_upload_{day}"
+        uploaded_day_files = st.file_uploader(f"【{day}】スマホのアルバムから写真を追加", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key=day_temp_key)
+        
+        current_day_images = list(saved_images)
+        
+        # アルバムから追加された一時的な画像があればリストに一時統合する
+        day_added_map = {}
+        if uploaded_day_files:
+            for uf in uploaded_day_files:
+                temp_path = os.path.join(TEMP_DIR, f"{day}_{uf.name}")
+                with open(temp_path, "wb") as tw:
+                    tw.write(uf.getbuffer())
+                day_added_map[f"TEMP_{uf.name}"] = temp_path
+        
+        # 選択肢のリスト（登録済み画像 ＋ 今回追加した画像）
+        all_options_for_day = saved_images + list(day_added_map.keys())
+        
+        if all_options_for_day:
+            # 必ず横3列に並ぶようにカラムを回す
             day_chosen_imgs = []
             
-            for i, img_name in enumerate(saved_images):
-                img_path = os.path.join(IMAGE_DIR, img_name)
-                col_idx = i % 3
-                with cols[col_idx]:
-                    try:
-                        img = Image.open(img_path)
-                        st.image(img, width=75)
-                    except Exception:
-                        pass
-                    
-                    is_checked = st.checkbox(f"選択 {i+1}", key=f"chk_{day}_{img_name}")
-                    if is_checked:
-                        day_chosen_imgs.append(img_name)
+            # 3つずつ行（グリッド）に分けて描画
+            for i in range(0, len(all_options_for_day), 3):
+                row_items = all_options_for_day[i:i+3]
+                cols = st.columns(3)
+                for col_idx, item_name in enumerate(row_items):
+                    with cols[col_idx]:
+                        if item_name.startswith("TEMP_"):
+                            real_path = day_added_map[item_name]
+                            display_label = "追加写真"
+                        else:
+                            real_path = os.path.join(IMAGE_DIR, item_name)
+                            display_label = f"登録 {i + col_idx + 1}"
+                        
+                        try:
+                            img = Image.open(real_path)
+                            st.image(img, width=80)
+                        except Exception:
+                            pass
+                        
+                        is_checked = st.checkbox(display_label, key=f"chk_{day}_{item_name}")
+                        if is_checked:
+                            day_chosen_imgs.append((item_name, real_path))
             
             day_selected_images[day] = day_chosen_imgs
-            st.write("") # 余白
-    else:
-        st.info("登録済みの画像がありません。画面一番下の「画像の管理」から画像を追加してください。")
+        else:
+            st.info("登録済みの画像がありません。上のボタンからアルバムの写真を追加するか、一番下の管理から登録してください。")
+        
+        st.markdown("---")
 
 # --- 原稿生成ボタン ---
-st.markdown("---")
 if st.button("📝 原稿を生成する", type="primary"):
     report_text = ""
     if selected_greeting != "選択なし":
@@ -115,16 +163,15 @@ if st.button("📝 原稿を生成する", type="primary"):
     
     st.text_area("生成された原稿（確認・編集用）", final_post_text, height=200)
     
-    # 曜日ごとの選択画像確認
+    # 曜日ごとの選択画像確認プレビュー
     st.markdown("#### 📁 曜日ごとに選択された画像一覧")
     for day in selected_days:
         imgs = day_selected_images.get(day, [])
         if imgs:
             st.write(f"**【{day}曜日】の画像 ({len(imgs)}枚):**")
             cols_prev = st.columns(3)
-            for idx, img_name in enumerate(imgs):
+            for idx, (img_name, img_path) in enumerate(imgs):
                 with cols_prev[idx % 3]:
-                    img_path = os.path.join(IMAGE_DIR, img_name)
                     if os.path.exists(img_path):
                         st.image(Image.open(img_path), width=90)
         else:
