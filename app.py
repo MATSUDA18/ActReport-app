@@ -6,6 +6,18 @@ from PIL import Image
 
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
+# --- スマホでもサムネイルが必ず横に3つ並ぶようにするスタイルの設定 ---
+st.markdown("""
+<style>
+/* 3列のカラムがスマホで縦に崩れるのを防ぐための調整 */
+[data-testid="column"] {
+    width: 33.33% !important;
+    flex: 0 0 33.33% !important;
+    min-width: 0px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # --- タイトルを1行でスッキリ綺麗に表示 ---
 st.markdown("<h2 style='text-align: left; font-size: 24px;'>活動報告投稿アプリ</h2>", unsafe_allow_html=True)
 
@@ -47,7 +59,7 @@ IMAGE_DIR = "preset_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
-# --- 画像の選択（ファイル名なし・スマホで3列アイコン選択） ---
+# --- 画像の選択（横に3つ並ぶアイコン選択・ファイル名なし） ---
 st.markdown("---")
 st.subheader("🖼️ 画像の選択")
 image_mode = st.radio("画像の選び方を選んでください", ["登録済みの画像から選ぶ（アイコン選択）", "今回の投稿用の画像を新しくアップロードする"])
@@ -58,20 +70,20 @@ if image_mode == "登録済みの画像から選ぶ（アイコン選択）":
     saved_images = sorted(os.listdir(IMAGE_DIR))
     if saved_images:
         st.write("使いたい画像にチェックを入れてください：")
-        # 1行に3つ並べるため、3カラムに分割
+        
+        # 3カラム作成
         cols = st.columns(3)
         selected_images = []
         for i, img_name in enumerate(saved_images):
             img_path = os.path.join(IMAGE_DIR, img_name)
+            # 3つの列に順番に振り分ける
             with cols[i % 3]:
                 try:
                     img = Image.open(img_path)
-                    # スマホで見やすいよう小さめのサイズ（幅80ピクセル程度）に調整
                     st.image(img, width=80)
                 except Exception:
                     pass
                 
-                # ファイル名を隠し、番号やシンプルなチェックボックスにする
                 is_checked = st.checkbox(f"選択 {i+1}", key=f"chk_{img_name}")
                 if is_checked:
                     selected_images.append(img_name)
