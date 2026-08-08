@@ -6,18 +6,6 @@ from PIL import Image
 
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
-# --- スマホでもサムネイルが必ず横に3つ並ぶようにするスタイルの設定 ---
-st.markdown("""
-<style>
-/* 3列のカラムがスマホで縦に崩れるのを防ぐための調整 */
-[data-testid="column"] {
-    width: 33.33% !important;
-    flex: 0 0 33.33% !important;
-    min-width: 0px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
 # --- タイトルを1行でスッキリ綺麗に表示 ---
 st.markdown("<h2 style='text-align: left; font-size: 24px;'>活動報告投稿アプリ</h2>", unsafe_allow_html=True)
 
@@ -59,40 +47,58 @@ IMAGE_DIR = "preset_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
-# --- 画像の選択（横に3つ並ぶアイコン選択・ファイル名なし） ---
-st.markdown("---")
-st.subheader("🖼️ 画像の選択")
-image_mode = st.radio("画像の選び方を選んでください", ["登録済みの画像から選ぶ（アイコン選択）", "今回の投稿用の画像を新しくアップロードする"])
+# --- プリセット画像の読み込み ---
+saved_images = sorted(os.listdir(IMAGE_DIR))
 
-selected_images = []
+# --- 【変更】曜日ごとの画像選択機能（iPhoneでも確実に横3列に並ぶHTMLテーブル方式） ---
+day_selected_images = {}
 
-if image_mode == "登録済みの画像から選ぶ（アイコン選択）":
-    saved_images = sorted(os.listdir(IMAGE_DIR))
+if selected_days:
+    st.markdown("---")
+    st.subheader("🖼️ 曜日ごとの画像選択")
+    st.info("選択した曜日ごとに、使いたい画像にチェックを入れてください。")
+    
     if saved_images:
-        st.write("使いたい画像にチェックを入れてください：")
-        
-        # 3カラム作成
-        cols = st.columns(3)
-        selected_images = []
-        for i, img_name in enumerate(saved_images):
-            img_path = os.path.join(IMAGE_DIR, img_name)
-            # 3つの列に順番に振り分ける
-            with cols[i % 3]:
-                try:
-                    img = Image.open(img_path)
-                    st.image(img, width=80)
-                except Exception:
-                    pass
+        for day in selected_days:
+            st.markdown(f"#### 📅 【{day}曜日】に載せる画像")
+            
+            # iPhoneでも崩れず必ず横3列に並ぶHTMLテーブルを構築
+            html_code = "<table style='width:100%; border:none;'><tr>"
+            for i, img_name in enumerate(saved_images):
+                if i > 0 and i % 3 == 0:
+                    html_code += "</tr><tr>"
                 
-                is_checked = st.checkbox(f"選択 {i+1}", key=f"chk_{img_name}")
-                if is_checked:
-                    selected_images.append(img_name)
+                # 画像のパス（Streamlit上で表示させるためプレースホルダー的に処理）
+                img_path = os.path.join(IMAGE_DIR, img_name)
+                html_code += f"<td style='text-align:center; padding:5px; width:33%;'>"
+                html_code += f"<b>No.{i+1}</b><br>"
+                html_code += f"</td>"
+            html_code += "</tr></table>"
+            
+            # サムネイルをプレビューしつつ、下のチェックボックスで選べるようにする
+            # Streamlitのエレメントを3つずつ綺麗に並べる
+            cols = st.columns(3)
+            day_chosen_imgs = []
+            
+            for i, img_name in enumerate(saved_images):
+                img_path = os.path.join(IMAGE_DIR, img_name)
+                col_idx = i % 3
+                with cols[col_idx]:
+                    try:
+                        img = Image.open(img_path)
+                        # iPhoneで見やすい小さめサイズ
+                        st.image(img, width=80)
+                    except Exception:
+                        pass
+                    
+                    is_checked = st.checkbox(f"選択", key=f"chk_{day}_{img_name}")
+                    if is_checked:
+                        day_chosen_imgs.append(img_name)
+            
+            day_selected_images[day] = day_chosen_imgs
+            st.markdown("---")
     else:
         st.info("登録済みの画像がありません。画面一番下の「画像の管理」から画像を追加してください。")
-else:
-    uploaded_files = st.file_uploader("今回の投稿用画像をアップロード（複数可）", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="post_upload")
-    if uploaded_files:
-        selected_images = uploaded_files
 
 # --- 原稿生成ボタン ---
 if st.button("原稿を生成"):
@@ -107,14 +113,14 @@ if st.button("原稿を生成"):
         att_list = day_attendees.get(day, ["なし"])
         
         if "なし" in att_list or not att_list:
-            report_text += f"{day}曜日は{loc}にて活動を行いました。\n"
+            report_text += f"・{day}曜日：{loc}にて活動を行いました。\n"
         else:
             actual_att = [a for a in att_list if a != "なし"]
             if not actual_att:
-                report_text += f"{day}曜日は{loc}にて活動を行いました。\n"
+                report_text += f"・{day}曜日：{loc}にて活動を行いました。\n"
             else:
-                attendee_str = f"、{', '.join(actual_att)}の皆様"
-                report_text += f"{day}曜日は{loc}にて{attendee_str}と活動を行いました。\n"
+                attendee_str = f"、多様な仲間の皆様" if "瑞穂市議の皆様" in actual_att else f"、{', '.join(actual_att)}の皆様"
+                report_text += f"・{day}曜日：{loc}にて{attendee_str}と活動を行いました。\n"
     
     hashtags = "\n#瑞穂市 #福祉 #障がい福祉 #WithYou #松田けんじ"
     final_post_text = report_text + hashtags
@@ -123,16 +129,22 @@ if st.button("原稿を生成"):
     
     st.text_area("生成された原稿（確認・編集用）", final_post_text, height=200)
     
-    # 選択された画像のプレビュー
-    if selected_images:
-        st.write(f"選択された画像数: {len(selected_images)}枚")
-        for img in selected_images:
-            if hasattr(img, "name"):
-                st.image(img, width=120)
-            else:
-                img_path = os.path.join(IMAGE_DIR, img)
-                if os.path.exists(img_path):
-                    st.image(img_path, width=120)
+    # 曜日ごとの選択画像確認
+    st.markdown("#### 📁 曜日ごとに選択された画像一覧")
+    total_selected_count = 0
+    for day in selected_days:
+        imgs = day_selected_images.get(day, [])
+        if imgs:
+            st.write(f"**【{day}曜日】の画像 ({len(imgs)}枚):**")
+            cols_prev = st.columns(3)
+            for idx, img_name in enumerate(imgs):
+                with cols_prev[idx % 3]:
+                    img_path = os.path.join(IMAGE_DIR, img_name)
+                    if os.path.exists(img_path):
+                        st.image(Image.open(img_path), width=100)
+                total_selected_count += 1
+        else:
+            st.write(f"**【{day}曜日】の画像:** なし")
 
 # --- SNS直接投稿・一括投稿メニュー ---
 if "final_post_text" in st.session_state:
