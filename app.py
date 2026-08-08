@@ -6,7 +6,7 @@ from PIL import Image
 
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
-# --- 背景色 ＆ 縦長・コンパクトな横3列表示スタイル ---
+# --- 完全に横3列に収めるための強力なスリム化スタイル ---
 st.markdown("""
 <style>
 /* アプリ全体の背景色（淡いオレンジ・ピーチトーン） */
@@ -14,7 +14,7 @@ st.markdown("""
     background-color: #FFF6F0;
 }
 
-/* スマホ画面でも横3列のサムネイルを確実に綺麗に並べる */
+/* スマホでも確実に横3列（各カラム幅約31%）で並ぶように強制固定 */
 @media screen and (max-width: 768px) {
     div[data-testid="stHorizontal"],
     div[data-testid="horizontalBlock"],
@@ -23,6 +23,7 @@ st.markdown("""
         flex-direction: row !important;
         flex-wrap: wrap !important;
         width: 100% !important;
+        gap: 1px !important;
     }
     
     div[data-testid="stHorizontal"] > div[data-testid="stColumn"],
@@ -33,19 +34,21 @@ st.markdown("""
         min-width: 31% !important;
         max-width: 32% !important;
         flex: 1 1 31% !important;
-        padding: 2px !important;
+        padding: 1px !important;
         box-sizing: border-box !important;
     }
 }
 
-/* サムネイル画像サイズをさらにコンパクトにし、縦長比率に調整 */
+/* サムネイルを囲む「箱（スペース）」をスリムにし、縦長比率でコンパクトに配置 */
 div[data-testid="stColumn"] img,
 .stColumn img {
     max-width: 100% !important;
-    height: 75px !important; /* 少し小さめの縦長サイズに調整 */
-    object-fit: contain !important; /* 写真全体が切れないように縦長比率を維持して収める */
-    background-color: #fcece4; /* 余白ができる場合の背景色 */
+    height: 65px !important; /* 高さをよりコンパクトに */
+    object-fit: contain !important;
+    background-color: #faebe2; /* 優しい色味の背景 */
     border-radius: 4px;
+    display: block;
+    margin: 0 auto;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -122,17 +125,17 @@ if not os.path.exists(TEMP_DIR):
 saved_images = sorted(os.listdir(IMAGE_DIR))
 day_selected_images = {}
 
-# ③ 曜日ごとの画像選択（横3列コンパクト ＆ 縦長比率維持対応）
+# ③ 曜日ごとの画像選択（横3列スリム・縦長比率維持）
 if selected_days:
     st.markdown("---")
     st.markdown("#### 🖼️ ③ 曜日ごとの画像選択")
-    st.caption("※固定画像（縦長・コンパクト横3列）から選んだあと、アルバムから追加できます。")
+    st.caption("※スリム化された横3列の固定画像からサクッと選べます。")
     
     for day in selected_days:
         st.markdown(f"**📅 【{day}曜日】の画像**")
         day_chosen_imgs = []
         
-        # 1. 固定画像（横3列）
+        # 1. 固定画像（横3列スリム表示）
         if saved_images:
             st.write("・登録済み画像から選択（横3列）:")
             for i in range(0, len(saved_images), 3):
@@ -142,7 +145,6 @@ if selected_days:
                     with cols[col_idx]:
                         img_path = os.path.join(IMAGE_DIR, img_name)
                         try:
-                            # プレビュー表示（縦長の比率を保持して表示）
                             st.image(Image.open(img_path), use_container_width=True)
                         except Exception:
                             pass
@@ -267,7 +269,7 @@ with st.expander("⚙️ 【普段は閉じています】用意された画像�
     
     existing_images = os.listdir(IMAGE_DIR)
     if existing_images:
-        st.write("现在登録されている画像:")
+        st.write("現在登録されている画像:")
         for img_name in existing_images:
             col_a, col_b, col_c = st.columns([1, 3, 1])
             with col_a:
