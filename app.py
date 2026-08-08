@@ -6,15 +6,15 @@ from PIL import Image
 
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
-# --- 背景色＆iPhone横3列を確実に維持する強化スタイル ---
+# --- 背景色 ＆ 縦長・コンパクトな横3列表示スタイル ---
 st.markdown("""
 <style>
-/* 1. アプリ全体の背景色を「心が落ち着く淡いオレンジ（ピーチトーン）」に変更 */
+/* アプリ全体の背景色（淡いオレンジ・ピーチトーン） */
 .stApp {
     background-color: #FFF6F0;
 }
 
-/* 2. スマホ画面でも横3列のサムネイルを絶対に崩さず綺麗に並べる */
+/* スマホ画面でも横3列のサムネイルを確実に綺麗に並べる */
 @media screen and (max-width: 768px) {
     div[data-testid="stHorizontal"],
     div[data-testid="horizontalBlock"],
@@ -38,13 +38,14 @@ st.markdown("""
     }
 }
 
-/* 3. サムネイル画像サイズをさらに小さくコンパクトに、角丸加工 */
+/* サムネイル画像サイズをさらにコンパクトにし、縦長比率に調整 */
 div[data-testid="stColumn"] img,
 .stColumn img {
     max-width: 100% !important;
-    height: 65px !important; /* 高さを小さく固定 */
-    object-fit: cover !important; /* 縦長画像をきれいにトリミング */
-    border-radius: 6px;
+    height: 75px !important; /* 少し小さめの縦長サイズに調整 */
+    object-fit: contain !important; /* 写真全体が切れないように縦長比率を維持して収める */
+    background-color: #fcece4; /* 余白ができる場合の背景色 */
+    border-radius: 4px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -121,11 +122,11 @@ if not os.path.exists(TEMP_DIR):
 saved_images = sorted(os.listdir(IMAGE_DIR))
 day_selected_images = {}
 
-# ③ 曜日ごとの画像選択（横3列コンパクト ＆ 正方形トリミング対応）
+# ③ 曜日ごとの画像選択（横3列コンパクト ＆ 縦長比率維持対応）
 if selected_days:
     st.markdown("---")
     st.markdown("#### 🖼️ ③ 曜日ごとの画像選択")
-    st.caption("※固定画像（横3列・自動正方形化）から選んだあと、アルバムから追加できます。")
+    st.caption("※固定画像（縦長・コンパクト横3列）から選んだあと、アルバムから追加できます。")
     
     for day in selected_days:
         st.markdown(f"**📅 【{day}曜日】の画像**")
@@ -141,16 +142,8 @@ if selected_days:
                     with cols[col_idx]:
                         img_path = os.path.join(IMAGE_DIR, img_name)
                         try:
-                            # 縦長画像を自動で正方形にトリミング処理して表示
-                            pil_img = Image.open(img_path)
-                            w, h = pil_img.size
-                            min_side = min(w, h)
-                            left = (w - min_side) / 2
-                            top = (h - min_side) / 2
-                            right = (w + min_side) / 2
-                            bottom = (h + min_side) / 2
-                            cropped_img = pil_img.crop((left, top, right, bottom))
-                            st.image(cropped_img, use_container_width=True)
+                            # プレビュー表示（縦長の比率を保持して表示）
+                            st.image(Image.open(img_path), use_container_width=True)
                         except Exception:
                             pass
                         is_checked = st.checkbox(f"選択 {i+col_idx+1}", key=f"chk_{day}_{img_name}")
@@ -179,11 +172,7 @@ if selected_days:
                         tw.write(uf.getbuffer())
                     with cols_add[col_idx]:
                         try:
-                            pil_img = Image.open(temp_path)
-                            w, h = pil_img.size
-                            min_side = min(w, h)
-                            cropped_img = pil_img.crop(((w - min_side) / 2, (h - min_side) / 2, (w + min_side) / 2, (h + min_side) / 2))
-                            st.image(cropped_img, use_container_width=True)
+                            st.image(Image.open(temp_path), use_container_width=True)
                         except Exception:
                             pass
                         is_added_checked = st.checkbox(f"追加 {i+col_idx+1}", key=f"chk_temp_{day}_{uf.name}", value=True)
@@ -235,11 +224,7 @@ if "final_post_text" in st.session_state:
                 for idx, (img_name, img_path) in enumerate(row_imgs):
                     with cols_prev[idx]:
                         if os.path.exists(img_path):
-                            pil_img = Image.open(img_path)
-                            w, h = pil_img.size
-                            min_side = min(w, h)
-                            cropped_img = pil_img.crop(((w - min_side) / 2, (h - min_side) / 2, (w + min_side) / 2, (h + min_side) / 2))
-                            st.image(cropped_img, use_container_width=True)
+                            st.image(Image.open(img_path), use_container_width=True)
         else:
             st.write(f"**【{day}曜日】の画像:** なし")
 
@@ -282,15 +267,12 @@ with st.expander("⚙️ 【普段は閉じています】用意された画像�
     
     existing_images = os.listdir(IMAGE_DIR)
     if existing_images:
-        st.write("現在登録されている画像:")
+        st.write("现在登録されている画像:")
         for img_name in existing_images:
             col_a, col_b, col_c = st.columns([1, 3, 1])
             with col_a:
                 try:
-                    pil_img = Image.open(os.path.join(IMAGE_DIR, img_name))
-                    w, h = pil_img.size
-                    min_side = min(w, h)
-                    st.image(pil_img.crop(((w - min_side) / 2, (h - min_side) / 2, (w + min_side) / 2, (h + min_side) / 2)), width=50)
+                    st.image(Image.open(os.path.join(IMAGE_DIR, img_name)), width=45)
                 except Exception:
                     pass
             with col_b:
