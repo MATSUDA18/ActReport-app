@@ -6,10 +6,15 @@ from PIL import Image
 
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
-# --- iPhone Chrome / スマホ完全対応CSS（横3列固定） ---
+# --- 背景色＆iPhone横3列を確実に維持する強化スタイル ---
 st.markdown("""
 <style>
-/* スマホ画面でも横3列表示を維持する強力なスタイル */
+/* 1. アプリ全体の背景色を「心が落ち着く淡いオレンジ（ピーチトーン）」に変更 */
+.stApp {
+    background-color: #FFF6F0;
+}
+
+/* 2. スマホ画面でも横3列のサムネイルを絶対に崩さず綺麗に並べる */
 @media screen and (max-width: 768px) {
     div[data-testid="stHorizontal"],
     div[data-testid="horizontalBlock"],
@@ -22,7 +27,6 @@ st.markdown("""
     
     div[data-testid="stHorizontal"] > div[data-testid="stColumn"],
     div[data-testid="stHorizontal"] > div[data-testid="column"],
-    div[data-testid="stHorizontal"] > div.stColumn,
     div[data-testid="horizontalBlock"] > div,
     .stColumn {
         width: 31% !important;
@@ -34,18 +38,19 @@ st.markdown("""
     }
 }
 
-/* サムネイル画像のフィット設定 */
+/* 3. サムネイル画像サイズをさらに小さくコンパクトに、角丸加工 */
 div[data-testid="stColumn"] img,
 .stColumn img {
     max-width: 100% !important;
-    height: auto !important;
+    height: 65px !important; /* 高さを小さく固定 */
+    object-fit: cover !important; /* 縦長画像をきれいにトリミング */
     border-radius: 6px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# --- タイトルを1行でスッキリ綺麗に表示 ---
-st.markdown("<h3 style='text-align: left; font-size: 22px; margin-bottom: 15px;'>活動報告投稿アプリ</h3>", unsafe_allow_html=True)
+# --- タイトル ---
+st.markdown("<h3 style='text-align: left; font-size: 22px; margin-bottom: 15px; color: #333333;'>活動報告投稿アプリ</h3>", unsafe_allow_html=True)
 
 # 曜日と場所の定義
 activities = {
@@ -55,10 +60,9 @@ activities = {
     "金": "穂積駅南口（挨拶活動）",
 }
 
-# --- ① 曜日選択（プルダウンを使わず直接タップで選択） ---
+# ① 曜日選択
 st.markdown("#### ① 活動した曜日を選択してください")
 selected_days = []
-
 c_mon = st.checkbox("月曜日（穂積駅南口）", key="day_mon")
 c_tue = st.checkbox("火曜日（国道21号線沿い）", key="day_tue")
 c_thu = st.checkbox("木曜日（本田団地南側ENEOS交差点）", key="day_thu")
@@ -69,7 +73,7 @@ if c_tue: selected_days.append("火")
 if c_thu: selected_days.append("木")
 if c_fri: selected_days.append("金")
 
-# --- 曜日ごとの同行者設定（プルダウンを使わず直接タップで選択） ---
+# 曜日ごとの同行者設定
 day_attendees = {}
 if selected_days:
     st.markdown("---")
@@ -91,7 +95,7 @@ if selected_days:
         if att_mizu: chosen.append("瑞穂市議の皆様")
         day_attendees[day] = chosen
 
-# --- ② 冒頭の挨拶（ラジオボタンで一発選択） ---
+# ② 冒頭の挨拶
 st.markdown("---")
 st.markdown("#### ② 原稿の冒頭の挨拶を選んでください")
 greeting_options = [
@@ -105,7 +109,7 @@ greeting_options = [
 ]
 selected_greeting = st.radio("挨拶を選択", greeting_options, index=0, label_visibility="collapsed")
 
-# --- プリセット画像＆一時アップロードの保存フォルダ準備 ---
+# フォルダ準備
 IMAGE_DIR = "preset_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
@@ -117,17 +121,17 @@ if not os.path.exists(TEMP_DIR):
 saved_images = sorted(os.listdir(IMAGE_DIR))
 day_selected_images = {}
 
-# --- ③ 曜日ごとの画像選択（横3列固定 ＋ スマホアルバム追加） ---
+# ③ 曜日ごとの画像選択（横3列コンパクト ＆ 正方形トリミング対応）
 if selected_days:
     st.markdown("---")
     st.markdown("#### 🖼️ ③ 曜日ごとの画像選択")
-    st.caption("※固定画像（横3列）から選んだあと、必要に応じてスマホのアルバムから写真を追加できます。")
+    st.caption("※固定画像（横3列・自動正方形化）から選んだあと、アルバムから追加できます。")
     
     for day in selected_days:
         st.markdown(f"**📅 【{day}曜日】の画像**")
         day_chosen_imgs = []
         
-        # 1. 登録済みの固定画像を横3列で表示
+        # 1. 固定画像（横3列）
         if saved_images:
             st.write("・登録済み画像から選択（横3列）:")
             for i in range(0, len(saved_images), 3):
@@ -137,7 +141,16 @@ if selected_days:
                     with cols[col_idx]:
                         img_path = os.path.join(IMAGE_DIR, img_name)
                         try:
-                            st.image(Image.open(img_path), use_container_width=True)
+                            # 縦長画像を自動で正方形にトリミング処理して表示
+                            pil_img = Image.open(img_path)
+                            w, h = pil_img.size
+                            min_side = min(w, h)
+                            left = (w - min_side) / 2
+                            top = (h - min_side) / 2
+                            right = (w + min_side) / 2
+                            bottom = (h + min_side) / 2
+                            cropped_img = pil_img.crop((left, top, right, bottom))
+                            st.image(cropped_img, use_container_width=True)
                         except Exception:
                             pass
                         is_checked = st.checkbox(f"選択 {i+col_idx+1}", key=f"chk_{day}_{img_name}")
@@ -146,7 +159,7 @@ if selected_days:
         else:
             st.info("登録済みの固定画像はありません（一番下の管理メニューから追加できます）。")
         
-        # 2. その下にスマホアルバムからの追加機能を配置
+        # 2. スマホアルバムからの追加
         st.write("")
         uploaded_day_files = st.file_uploader(
             f"・スマホのアルバムから写真を追加する【{day}曜日】",
@@ -166,7 +179,11 @@ if selected_days:
                         tw.write(uf.getbuffer())
                     with cols_add[col_idx]:
                         try:
-                            st.image(Image.open(temp_path), use_container_width=True)
+                            pil_img = Image.open(temp_path)
+                            w, h = pil_img.size
+                            min_side = min(w, h)
+                            cropped_img = pil_img.crop(((w - min_side) / 2, (h - min_side) / 2, (w + min_side) / 2, (h + min_side) / 2))
+                            st.image(cropped_img, use_container_width=True)
                         except Exception:
                             pass
                         is_added_checked = st.checkbox(f"追加 {i+col_idx+1}", key=f"chk_temp_{day}_{uf.name}", value=True)
@@ -176,7 +193,7 @@ if selected_days:
         day_selected_images[day] = day_chosen_imgs
         st.markdown("---")
 
-# --- 原稿生成ボタン ---
+# 原稿生成ボタン
 if st.button("📝 原稿を生成する", type="primary", use_container_width=True):
     report_text = ""
     if selected_greeting != "選択なし":
@@ -218,40 +235,39 @@ if "final_post_text" in st.session_state:
                 for idx, (img_name, img_path) in enumerate(row_imgs):
                     with cols_prev[idx]:
                         if os.path.exists(img_path):
-                            st.image(Image.open(img_path), use_container_width=True)
+                            pil_img = Image.open(img_path)
+                            w, h = pil_img.size
+                            min_side = min(w, h)
+                            cropped_img = pil_img.crop(((w - min_side) / 2, (h - min_side) / 2, (w + min_side) / 2, (h + min_side) / 2))
+                            st.image(cropped_img, use_container_width=True)
         else:
             st.write(f"**【{day}曜日】の画像:** なし")
 
-# --- SNS直接投稿・一括投稿メニュー ---
+# --- SNS直接投稿・複数選択メニュー ---
 if "final_post_text" in st.session_state:
     text_to_share = st.session_state["final_post_text"]
     encoded_text = urllib.parse.quote(text_to_share)
     
     st.markdown("---")
-    st.subheader("🚀 SNSへ投稿する")
+    st.subheader("🚀 SNSへ投稿する（複数選択可）")
+    st.caption("※投稿したいSNSにいくつでもチェックを入れてください。")
     
-    sns_choice = st.radio(
-        "投稿方法・送り先を選んでください",
-        [
-            "𝕏 (Twitter) で投稿する",
-            "Instagramを開いて投稿する（テキスト自動コピー）",
-            "Facebookでシェアする",
-            "🚀 すべてのSNS（X・Instagram・FB）へまとめて準備・一括投稿する"
-        ]
-    )
+    post_x = st.checkbox("🐦 𝕏 (Twitter) で投稿する")
+    post_ig = st.checkbox("📷 Instagram（テキスト自動コピー＋アプリ起動）")
+    post_fb = st.checkbox("📘 Facebookでシェアする")
     
-    if "𝕏 (Twitter)" in sns_choice or "すべて" in sns_choice:
+    if post_x:
         x_url = f"https://twitter.com/intent/tweet?text={encoded_text}"
-        st.markdown(f"[🐦 𝕏 (Twitter) の投稿画面を開く]({x_url})", unsafe_allow_html=True)
+        st.markdown(f"[➡️ 𝕏 (Twitter) の投稿画面を開く]({x_url})", unsafe_allow_html=True)
         
-    if "Instagram" in sns_choice or "すべて" in sns_choice:
-        st.info("Instagramはセキュリティ上、文章を直接ハメ込んで開けないため、下のボタンでテキストをコピーしてからInstagramアプリを開いてください。")
+    if post_ig:
+        st.info("Instagramは文章を直接ハメ込めないため、下のボタンでコピーしてからアプリを開いてください。")
         st.code(text_to_share, language="text")
-        st.markdown("[📷 Instagramアプリを開く（※上のテキストをコピーしてから開いてください）](https://www.instagram.com/)", unsafe_allow_html=True)
+        st.markdown("[➡️ Instagramアプリを開く](https://www.instagram.com/)", unsafe_allow_html=True)
         
-    if "Facebook" in sns_choice or "すべて" in sns_choice:
+    if post_fb:
         fb_url = f"https://www.facebook.com/sharer/sharer.php?u=&quote={encoded_text}"
-        st.markdown(f"[📘 Facebookのシェア画面を開く]({fb_url})", unsafe_allow_html=True)
+        st.markdown(f"[➡️ Facebookのシェア画面を開く]({fb_url})", unsafe_allow_html=True)
 
 # --- 一番下の画像の登録・削除管理機能 ---
 st.markdown("---")
@@ -271,7 +287,10 @@ with st.expander("⚙️ 【普段は閉じています】用意された画像�
             col_a, col_b, col_c = st.columns([1, 3, 1])
             with col_a:
                 try:
-                    st.image(os.path.join(IMAGE_DIR, img_name), width=50)
+                    pil_img = Image.open(os.path.join(IMAGE_DIR, img_name))
+                    w, h = pil_img.size
+                    min_side = min(w, h)
+                    st.image(pil_img.crop(((w - min_side) / 2, (h - min_side) / 2, (w + min_side) / 2, (h + min_side) / 2)), width=50)
                 except Exception:
                     pass
             with col_b:
