@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 import urllib.parse
 import os
+import base64
 from PIL import Image
 
 st.set_page_config(page_title="政治活動報告投稿", layout="centered")
@@ -398,72 +399,67 @@ with st.expander("⚙️ 【普段は閉じています】用意された画像�
     else:
         st.info("登録されている画像はありません。上のフォームから画像を追加してください。")
 
-# --- アプリ用ポップデザインアイコン（画像内に「政治活動報告」グラフィック内包） ---
+# --- アプリ用ポップデザインアイコン（画像内に「政治活動報告」グラフィック完全固定） ---
 st.markdown("---")
-with st.expander("🎨 スマホ用アプリアイコン画像のダウンロード（「政治活動報告」グラフィック入り）"):
-    st.write("画像の中にポップな『政治活動報告』の文字グラフィックがデザインされたアイコン画像です。")
-    st.caption("※下の画像をスマホで長押しして「写真に追加」を選択し、保存してご利用ください。")
+with st.expander("🎨 スマホ用アプリアイコン画像のダウンロード（「政治活動報告」完全画像データ化）"):
+    st.write("画像の中にポップな『政治活動報告』の文字グラフィックと挨拶するイラストが綺麗に組み合わさったアイコンです。")
+    st.caption("※下の画像をスマホで長押しして「"写真"に追加」（またはイメージを保存）を選択してご利用ください。")
     
-    # アイコン画像（512x512の領域内に人物イラスト＋ポップな「政治活動報告」文字グラフィックを配置）
-    svg_icon = """
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="220" height="220">
+    # 完全に崩れないBase64エンコード化されたアイコンSVGグラフィック
+    svg_icon_data = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
       <defs>
         <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#FFF3E0"/>
-          <stop offset="50%" stop-color="#FFE0B2"/>
-          <stop offset="100%" stop-color="#FFCC80"/>
+          <stop offset="0%" stop-color="#FFE0B2"/>
+          <stop offset="50%" stop-color="#FFB74D"/>
+          <stop offset="100%" stop-color="#FF7043"/>
         </linearGradient>
-        <filter id="watercolor" x="-20%" y="-20%" width="140%" height="140%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise"/>
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G"/>
-        </filter>
         <filter id="popShadow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#D84315" flood-opacity="0.35"/>
+          <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#BE360A" flood-opacity="0.4"/>
         </filter>
       </defs>
 
-      <!-- アイコン枠（角丸正方形） -->
+      <!-- アイコン枠 -->
       <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
 
-      <!-- 幾何学的アクセント（円・多角形） -->
-      <circle cx="100" cy="120" r="90" fill="#FF8A65" opacity="0.25"/>
-      <circle cx="420" cy="400" r="130" fill="#FB8C00" opacity="0.2"/>
-      <polygon points="256,30 460,140 390,390 120,390 50,140" fill="#FF7043" opacity="0.12"/>
-      <circle cx="256" cy="300" r="150" fill="#FFFFFF" opacity="0.65"/>
+      <!-- 幾何学的デザインパターン -->
+      <circle cx="110" cy="110" r="95" fill="#FFFFFF" opacity="0.25"/>
+      <circle cx="410" cy="410" r="125" fill="#FFFFFF" opacity="0.2"/>
+      <polygon points="256,40 450,150 380,420 130,420 60,150" fill="#FFFFFF" opacity="0.12"/>
+      <circle cx="256" cy="295" r="145" fill="#FFFFFF" opacity="0.85"/>
 
-      <!-- 人物イラスト（正面・挙手・水彩漫画風） -->
-      <g filter="url(#watercolor)" transform="translate(0, 35)">
-        <path d="M 165 440 Q 256 320 347 440 L 365 470 L 147 470 Z" fill="#FF6D00" opacity="0.9"/>
-        <path d="M 210 440 L 256 360 L 302 440 Z" fill="#FFFFFF" opacity="0.95"/>
-        <path d="M 242 395 L 256 435 L 270 395 Z" fill="#D84315"/>
+      <!-- 人物イラスト（正面向き・右手挙手） -->
+      <g transform="translate(0, 20)">
+        <path d="M 160 450 Q 256 330 352 450 L 370 480 L 142 480 Z" fill="#FF6D00"/>
+        <path d="M 210 450 L 256 370 L 302 450 Z" fill="#FFFFFF"/>
+        <path d="M 242 400 L 256 440 L 270 400 Z" fill="#D84315"/>
 
         <!-- 上げた右手 -->
-        <path d="M 315 370 C 375 300 380 210 365 180 C 350 165 335 185 330 210 C 315 260 295 330 295 370 Z" fill="#FF6D00"/>
-        <circle cx="365" cy="175" r="22" fill="#FFCC80"/>
+        <path d="M 320 370 C 380 290 385 190 368 160 C 352 145 336 165 330 190 C 315 240 295 320 295 370 Z" fill="#FF6D00"/>
+        <circle cx="368" cy="155" r="24" fill="#FFCC80"/>
 
         <!-- 顔・髪型 -->
-        <ellipse cx="256" cy="255" rx="58" ry="68" fill="#FFCC80"/>
-        <path d="M 195 245 C 195 175 317 175 317 245 C 305 195 207 195 195 245 Z" fill="#4E342E"/>
+        <ellipse cx="256" cy="245" rx="58" ry="68" fill="#FFCC80"/>
+        <path d="M 195 235 C 195 165 317 165 317 235 C 305 185 207 185 195 235 Z" fill="#4E342E"/>
 
-        <!-- メガネ・笑顔 -->
-        <rect x="212" y="235" width="36" height="24" rx="7" fill="none" stroke="#3E2723" stroke-width="4.5"/>
-        <rect x="264" y="235" width="36" height="24" rx="7" fill="none" stroke="#3E2723" stroke-width="4.5"/>
-        <line x1="248" y1="247" x2="264" y2="247" stroke="#3E2723" stroke-width="4.5"/>
-        <circle cx="230" cy="247" r="3.5" fill="#3E2723"/>
-        <circle cx="282" cy="247" r="3.5" fill="#3E2723"/>
-        <path d="M 238 280 Q 256 296 274 280" fill="none" stroke="#D84315" stroke-width="4.5" stroke-linecap="round"/>
-        <ellipse cx="215" cy="268" rx="11" ry="6" fill="#FF8A65" opacity="0.5"/>
-        <ellipse cx="297" cy="268" rx="11" ry="6" fill="#FF8A65" opacity="0.5"/>
+        <!-- メガネと笑顔 -->
+        <rect x="210" y="225" width="38" height="26" rx="8" fill="none" stroke="#3E2723" stroke-width="5"/>
+        <rect x="264" y="225" width="38" height="26" rx="8" fill="none" stroke="#3E2723" stroke-width="5"/>
+        <line x1="248" y1="238" x2="264" y2="238" stroke="#3E2723" stroke-width="5"/>
+        <circle cx="229" cy="238" r="4" fill="#3E2723"/>
+        <circle cx="283" cy="238" r="4" fill="#3E2723"/>
+        <path d="M 236 272 Q 256 290 276 272" fill="none" stroke="#D84315" stroke-width="5" stroke-linecap="round"/>
+        <ellipse cx="212" cy="260" rx="10" ry="6" fill="#FF8A65" opacity="0.6"/>
+        <ellipse cx="300" cy="260" rx="10" ry="6" fill="#FF8A65" opacity="0.6"/>
       </g>
 
-      <!-- 画像内に配置されたマンガ風ポップ『政治活動報告』タイトルバッジ -->
-      <g filter="url(#popShadow)" transform="translate(256, 92)">
-        <rect x="-190" y="-40" width="380" height="80" rx="22" fill="#FF6D00"/>
-        <rect x="-184" y="-34" width="368" height="68" rx="17" fill="#FFFFFF"/>
-        <!-- ポップなフチ取りと影付きの「政治活動報告」文字 -->
-        <text x="2" y="15" font-family="'Comic Sans MS', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif" font-weight="900" font-size="38" fill="#FFAB91" text-anchor="middle" letter-spacing="2">政治活動報告</text>
-        <text x="0" y="12" font-family="'Comic Sans MS', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif" font-weight="900" font-size="38" fill="#D84315" text-anchor="middle" letter-spacing="2">政治活動報告</text>
+      <!-- 上部にドーンと配置された「政治活動報告」バッジ -->
+      <g filter="url(#popShadow)">
+        <rect x="36" y="36" width="440" height="90" rx="24" fill="#FF5722"/>
+        <rect x="42" y="42" width="428" height="78" rx="19" fill="#FFFFFF"/>
+        <text x="256" y="96" font-family="sans-serif, system-ui, -apple-system" font-weight="900" font-size="42" fill="#D84315" text-anchor="middle" letter-spacing="3">政治活動報告</text>
       </g>
-    </svg>
-    """
-    st.markdown(svg_icon, unsafe_allow_html=True)
+    </svg>"""
+
+    # Base64形式にエンコードして確実に画像表示
+    b64_svg = base64.b64encode(svg_icon_data.strip().encode('utf-8')).decode('utf-8')
+    st.image(f"data:image/svg+xml;base64,{b64_svg}", width=240)
