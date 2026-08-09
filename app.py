@@ -6,7 +6,7 @@ from PIL import Image
 
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
-# --- スマホ画面で確実に横3列に収めるための強化スタイル ---
+# --- iPhone 17 Proでも確実に横3列に収めるための極限スリム化スタイル ---
 st.markdown("""
 <style>
 /* アプリ全体の背景色（淡いオレンジ・ピーチトーン） */
@@ -14,7 +14,13 @@ st.markdown("""
     background-color: #FFF6F0;
 }
 
-/* スマホでもカラムを絶対に横3列（各幅31%）に強制固定する */
+/* アプリ全体の左右の余白を詰めて横幅を最大限に活用する */
+.block-container {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+}
+
+/* スマホでもカラムを絶対に横3列に強制固定する */
 @media screen and (max-width: 768px) {
     div[data-testid="stHorizontal"],
     div[data-testid="horizontalBlock"],
@@ -30,20 +36,20 @@ st.markdown("""
     div[data-testid="stHorizontal"] > div[data-testid="column"],
     div[data-testid="horizontalBlock"] > div,
     .stColumn {
-        width: 31% !important;
-        min-width: 31% !important;
-        max-width: 32% !important;
-        flex: 1 1 31% !important;
+        width: 32% !important;
+        min-width: 32% !important;
+        max-width: 33% !important;
+        flex: 1 1 32% !important;
         padding: 0px !important;
         box-sizing: border-box !important;
     }
 }
 
-/* サムネイル画像をスリムにし、3列できれいに収める */
+/* サムネイル画像をさらにスリムにし、3列できれいに収める */
 div[data-testid="stColumn"] img,
 .stColumn img {
-    width: 60px !important;  
-    height: 80px !important; 
+    width: 50px !important;  
+    height: 70px !important; 
     object-fit: cover !important;
     background-color: #faebe2;
     border-radius: 4px;
@@ -56,48 +62,80 @@ div[data-testid="stColumn"] img,
 # --- タイトル ---
 st.markdown("<h3 style='text-align: left; font-size: 22px; margin-bottom: 15px; color: #333333;'>活動報告投稿アプリ</h3>", unsafe_allow_html=True)
 
-# 曜日と場所の定義
-activities = {
-    "月": "穂積駅南口（挨拶活動）",
-    "火": "国道21号線沿い（街頭報告）",
-    "木": "本田団地南側ENEOS交差点（挨拶活動）",
-    "金": "穂積駅南口（挨拶活動）",
+# 活動場所の定義（曜日ごと）
+activities_map = {
+    0: ("月", "穂積駅南口（挨拶活動）"),
+    1: ("火", "国道21号線沿い（街頭報告）"),
+    3: ("木", "本田団地南側ENEOS交差点（挨拶活動）"),
+    4: ("金", "穂積駅南口（挨拶活動）"),
 }
 
-# ① 曜日選択
-st.markdown("#### ① 活動した曜日を選択してください")
-selected_days = []
-c_mon = st.checkbox("月曜日（穂積駅南口）", key="day_mon")
-c_tue = st.checkbox("火曜日（国道21号線沿い）", key="day_tue")
-c_thu = st.checkbox("木曜日（本田団地南側ENEOS交差点）", key="day_thu")
-c_fri = st.checkbox("金曜日（穂積駅南口）", key="day_fri")
+# --- ① 日付の選択（カレンダー入力・複数日対応） ---
+st.markdown("#### ① 活動した日付を選択してください")
+st.caption("※カレンダーで報告したい期間（または単日）を選んでください。自動で曜日の場所が割り当てられます。")
 
-if c_mon: selected_days.append("月")
-if c_tue: selected_days.append("火")
-if c_thu: selected_days.append("木")
-if c_fri: selected_days.append("金")
+today = datetime.date.today()
+# デフォルトで今週の月曜日から金曜日（または今日）を選択
+date_range = st.date_input(
+    "活動日を選択",
+    value=(today - datetime.timedelta(days=3), today),
+    label_visibility="collapsed"
+)
 
-# 曜日ごとの同行者設定
+# 選択された日付のリストを作成
+target_dates = []
+if isinstance(date_range, tuple):
+    if len(date_range) == 2:
+        start_d, end_d = date_range
+        delta = end_d - start_d
+        for i in range(delta.days + 1):
+            target_dates.append(start_d + datetime.timedelta(days=i))
+    elif len(date_range) == 1:
+        target_dates = [date_range[0]]
+else:
+    target_dates = [date_range]
+
+# 対象となる活動日（月・火・木・金）だけを抽出
+active_days_data = []
+for d in target_dates:
+    wd = d.weekday() # 0:月, 1:火, 2:水, 3:木, 4:金, 5:土, 6:日
+    if wd in activities_map:
+        day_char, loc_name = activities_map[wd]
+        date_str = d.strftime('%Y年%m月%d日')
+        active_days_data.append({
+            "date_obj": d,
+            "date_str": date_str,
+            "day_char": day_char,
+            "location": loc_name
+        })
+
+if not active_days_data:
+    st.warning("⚠️ 選択した期間内に活動日（月・火・木・金）が含まれていません。日付の範囲を広げてください。")
+
+# --- 曜日（日付）ごとの同行者設定 ---
 day_attendees = {}
-if selected_days:
+if active_days_data:
     st.markdown("---")
-    st.markdown("#### 👥 曜日ごとの同行者設定")
-    for day in selected_days:
-        st.markdown(f"**【{day}曜日】の同行者を選択**（複数可）")
+    st.markdown("#### 👥 選択した活動日の同行者設定")
+    for item in active_days_data:
+        d_key = str(item["date_obj"])
+        label_title = f"【{item['date_str']} ({item['day_char']}曜日)】 {item['location']}"
+        st.markdown(f"**{label_title}** の同行者を選択（複数可）")
+        
         col_a1, col_a2 = st.columns(2)
         with col_a1:
-            att_none = st.checkbox("なし", key=f"att_none_{day}", value=True)
-            att_mori = st.checkbox("森はるひさ県議", key=f"att_mori_{day}")
+            att_none = st.checkbox("なし", key=f"att_none_{d_key}", value=True)
+            att_mori = st.checkbox("森はるひさ県議", key=f"att_mori_{d_key}")
         with col_a2:
-            att_miya = st.checkbox("宮川しょうけん市議", key=f"att_miya_{day}")
-            att_mizu = st.checkbox("瑞穂市議の皆様", key=f"att_mizu_{day}")
+            att_miya = st.checkbox("宮川しょうけん市議", key=f"att_miya_{d_key}")
+            att_mizu = st.checkbox("瑞穂市議の皆様", key=f"att_mizu_{d_key}")
         
         chosen = []
         if att_none: chosen.append("なし")
         if att_mori: chosen.append("森はるひさ県議")
         if att_miya: chosen.append("宮川しょうけん市議")
         if att_mizu: chosen.append("瑞穂市議の皆様")
-        day_attendees[day] = chosen
+        day_attendees[d_key] = chosen
 
 # ② 冒頭の挨拶
 st.markdown("---")
@@ -125,14 +163,15 @@ if not os.path.exists(TEMP_DIR):
 saved_images = sorted(os.listdir(IMAGE_DIR))
 day_selected_images = {}
 
-# ③ 曜日ごとの画像選択（横3列スリム）
-if selected_days:
+# --- ③ 日付ごとの画像選択（横3列スリム） ---
+if active_days_data:
     st.markdown("---")
-    st.markdown("#### 🖼️ ③ 曜日ごとの画像選択")
+    st.markdown("#### 🖼️ ③ 活動日ごとの画像選択")
     st.caption("※コンパクトな縦長サムネイルが横3列に並びます。")
     
-    for day in selected_days:
-        st.markdown(f"**📅 【{day}曜日】の画像**")
+    for item in active_days_data:
+        d_key = str(item["date_obj"])
+        st.markdown(f"**📅 【{item['date_str']} ({item['day_char']}曜日)】の画像**")
         day_chosen_imgs = []
         
         # 1. 固定画像（横3列）
@@ -145,10 +184,10 @@ if selected_days:
                     with cols[col_idx]:
                         img_path = os.path.join(IMAGE_DIR, img_name)
                         try:
-                            st.image(Image.open(img_path), width=60)
+                            st.image(Image.open(img_path), width=50)
                         except Exception:
                             pass
-                        is_checked = st.checkbox(f"選択 {i+col_idx+1}", key=f"chk_{day}_{img_name}")
+                        is_checked = st.checkbox(f"選択 {i+col_idx+1}", key=f"chk_{d_key}_{img_name}")
                         if is_checked:
                             day_chosen_imgs.append((img_name, img_path))
         else:
@@ -157,10 +196,10 @@ if selected_days:
         # 2. スマホアルバムからの追加
         st.write("")
         uploaded_day_files = st.file_uploader(
-            f"・スマホのアルバムから写真を追加する【{day}曜日】",
+            f"・スマホアルバムから写真追加【{item['date_str']}】",
             type=["jpg", "jpeg", "png"],
             accept_multiple_files=True,
-            key=f"day_upload_{day}"
+            key=f"day_upload_{d_key}"
         )
         
         if uploaded_day_files:
@@ -169,19 +208,19 @@ if selected_days:
                 row_files = uploaded_day_files[i:i+3]
                 cols_add = st.columns(3)
                 for col_idx, uf in enumerate(row_files):
-                    temp_path = os.path.join(TEMP_DIR, f"{day}_{uf.name}")
+                    temp_path = os.path.join(TEMP_DIR, f"{d_key}_{uf.name}")
                     with open(temp_path, "wb") as tw:
                         tw.write(uf.getbuffer())
                     with cols_add[col_idx]:
                         try:
-                            st.image(Image.open(temp_path), width=60)
+                            st.image(Image.open(temp_path), width=50)
                         except Exception:
                             pass
-                        is_added_checked = st.checkbox(f"追加 {i+col_idx+1}", key=f"chk_temp_{day}_{uf.name}", value=True)
+                        is_added_checked = st.checkbox(f"追加 {i+col_idx+1}", key=f"chk_temp_{d_key}_{uf.name}", value=True)
                         if is_added_checked:
                             day_chosen_imgs.append((uf.name, temp_path))
         
-        day_selected_images[day] = day_chosen_imgs
+        day_selected_images[d_key] = day_chosen_imgs
         st.markdown("---")
 
 # 原稿生成ボタン
@@ -192,18 +231,22 @@ if st.button("📝 原稿を生成する", type="primary", use_container_width=T
     
     report_text += "【活動報告】\n\n"
     
-    for day in selected_days:
-        loc = activities[day]
-        att_list = day_attendees.get(day, ["なし"])
+    for item in active_days_data:
+        d_key = str(item["date_obj"])
+        loc = item["location"]
+        day_c = item["day_char"]
+        date_s = item["date_str"]
         
+        att_list = day_attendees.get(d_key, ["なし"])
         actual_att = [a for a in att_list if a != "なし"]
+        
         if not actual_att:
-            report_text += f"・{day}曜日：{loc}にて活動を行いました。\n"
+            report_text += f"・{date_s}（{day_c}）：{loc}にて活動を行いました。\n"
         elif "瑞穂市議の皆様" in actual_att:
-            report_text += f"・{day}曜日：{loc}にて、多様な仲間の皆様と活動を行いました。\n"
+            report_text += f"・{date_s}（{day_c}）：{loc}にて、多様な仲間の皆様と活動を行いました。\n"
         else:
             attendee_str = f"、{', '.join(actual_att)}の皆様"
-            report_text += f"・{day}曜日：{loc}にて{attendee_str}と活動を行いました。\n"
+            report_text += f"・{date_s}（{day_c}）：{loc}にて{attendee_str}と活動を行いました。\n"
     
     hashtags = "\n#瑞穂市 #福祉 #障がい福祉 #WithYou #松田けんじ"
     final_post_text = report_text + hashtags
@@ -214,21 +257,22 @@ if "final_post_text" in st.session_state:
     final_post_text = st.session_state["final_post_text"]
     st.text_area("生成された原稿（確認・編集用）", final_post_text, height=200)
     
-    # 曜日ごとの選択画像確認プレビュー
-    st.markdown("#### 📁 曜日ごとに選択された画像一覧")
-    for day in selected_days:
-        imgs = day_selected_images.get(day, [])
+    # 選択された画像確認プレビュー
+    st.markdown("#### 📁 日付ごとに選択された画像一覧")
+    for item in active_days_data:
+        d_key = str(item["date_obj"])
+        imgs = day_selected_images.get(d_key, [])
         if imgs:
-            st.write(f"**【{day}曜日】の画像 ({len(imgs)}枚):**")
+            st.write(f"**【{item['date_str']}】の画像 ({len(imgs)}枚):**")
             for i in range(0, len(imgs), 3):
                 row_imgs = imgs[i:i+3]
                 cols_prev = st.columns(3)
                 for idx, (img_name, img_path) in enumerate(row_imgs):
                     with cols_prev[idx]:
                         if os.path.exists(img_path):
-                            st.image(Image.open(img_path), width=60)
+                            st.image(Image.open(img_path), width=50)
         else:
-            st.write(f"**【{day}曜日】の画像:** なし")
+            st.write(f"**【{item['date_str']}】の画像:** なし")
 
 # --- SNS直接投稿・複数選択メニュー ---
 if "final_post_text" in st.session_state:
@@ -274,7 +318,7 @@ with st.expander("⚙️ 【普段は閉じています】用意された画像�
             col_a, col_b, col_c = st.columns([1, 3, 1])
             with col_a:
                 try:
-                    st.image(Image.open(os.path.join(IMAGE_DIR, img_name)), width=45)
+                    st.image(Image.open(os.path.join(IMAGE_DIR, img_name)), width=40)
                 except Exception:
                     pass
             with col_b:
