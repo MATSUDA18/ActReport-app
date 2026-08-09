@@ -398,13 +398,13 @@ with st.expander("⚙️ 【普段は閉じています】用意された画像�
     else:
         st.info("登録されている画像はありません。上のフォームから画像を追加してください。")
 
-# --- アプリ用ポップデザインアイコン（「政治活動報告」バッジ入り） ---
+# --- アプリ用ポップデザインアイコン（画像内に「政治活動報告」グラフィック内包） ---
 st.markdown("---")
-with st.expander("🎨 スマホ用アプリアイコン画像のダウンロード（「政治活動報告」ポップ文字入り）"):
-    st.write("正面で手を上げる水彩漫画風のイラストに、ポップな『政治活動報告』のタイトルバッジが入ったデザインアイコンです。")
+with st.expander("🎨 スマホ用アプリアイコン画像のダウンロード（「政治活動報告」グラフィック入り）"):
+    st.write("画像の中にポップな『政治活動報告』の文字グラフィックがデザインされたアイコン画像です。")
     st.caption("※下の画像をスマホで長押しして「写真に追加」を選択し、保存してご利用ください。")
     
-    # 幾何学×水彩漫画風 ＋ ポップな「政治活動報告」文字グラフィックバッジ
+    # アイコン画像（512x512の領域内に人物イラスト＋ポップな「政治活動報告」文字グラフィックを配置）
     svg_icon = """
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="220" height="220">
       <defs>
@@ -418,35 +418,34 @@ with st.expander("🎨 スマホ用アプリアイコン画像のダウンロー
           <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G"/>
         </filter>
         <filter id="popShadow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#D84315" flood-opacity="0.3"/>
+          <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#D84315" flood-opacity="0.35"/>
         </filter>
       </defs>
 
-      <!-- カード外枠（幾何学ベース） -->
+      <!-- アイコン枠（角丸正方形） -->
       <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
 
-      <!-- 幾何学的アクセント背景 -->
+      <!-- 幾何学的アクセント（円・多角形） -->
       <circle cx="100" cy="120" r="90" fill="#FF8A65" opacity="0.25"/>
       <circle cx="420" cy="400" r="130" fill="#FB8C00" opacity="0.2"/>
       <polygon points="256,30 460,140 390,390 120,390 50,140" fill="#FF7043" opacity="0.12"/>
       <circle cx="256" cy="300" r="150" fill="#FFFFFF" opacity="0.65"/>
 
-      <!-- 水彩漫画風 人物キャラクター（正面・右手挙手） -->
+      <!-- 人物イラスト（正面・挙手・水彩漫画風） -->
       <g filter="url(#watercolor)" transform="translate(0, 35)">
-        <!-- オレンジジャケット -->
         <path d="M 165 440 Q 256 320 347 440 L 365 470 L 147 470 Z" fill="#FF6D00" opacity="0.9"/>
         <path d="M 210 440 L 256 360 L 302 440 Z" fill="#FFFFFF" opacity="0.95"/>
         <path d="M 242 395 L 256 435 L 270 395 Z" fill="#D84315"/>
 
-        <!-- 上げた右手（正面挙手） -->
+        <!-- 上げた右手 -->
         <path d="M 315 370 C 375 300 380 210 365 180 C 350 165 335 185 330 210 C 315 260 295 330 295 370 Z" fill="#FF6D00"/>
         <circle cx="365" cy="175" r="22" fill="#FFCC80"/>
 
-        <!-- 頭部・顔 -->
+        <!-- 顔・髪型 -->
         <ellipse cx="256" cy="255" rx="58" ry="68" fill="#FFCC80"/>
         <path d="M 195 245 C 195 175 317 175 317 245 C 305 195 207 195 195 245 Z" fill="#4E342E"/>
 
-        <!-- メガネと笑顔 -->
+        <!-- メガネ・笑顔 -->
         <rect x="212" y="235" width="36" height="24" rx="7" fill="none" stroke="#3E2723" stroke-width="4.5"/>
         <rect x="264" y="235" width="36" height="24" rx="7" fill="none" stroke="#3E2723" stroke-width="4.5"/>
         <line x1="248" y1="247" x2="264" y2="247" stroke="#3E2723" stroke-width="4.5"/>
@@ -457,13 +456,13 @@ with st.expander("🎨 スマホ用アプリアイコン画像のダウンロー
         <ellipse cx="297" cy="268" rx="11" ry="6" fill="#FF8A65" opacity="0.5"/>
       </g>
 
-      <!-- ポップな『政治活動報告』グラフィックタイトルバッジ -->
-      <g filter="url(#popShadow)" transform="translate(256, 90)">
-        <rect x="-200" y="-42" width="400" height="84" rx="22" fill="#FF6D00"/>
-        <rect x="-194" y="-36" width="388" height="72" rx="17" fill="#FFFFFF"/>
-        <!-- 立体ポップな文字デザイン -->
-        <text x="2" y="16" font-family="'Comic Sans MS', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif" font-weight="900" font-size="40" fill="#FFAB91" text-anchor="middle" letter-spacing="3">政治活動報告</text>
-        <text x="0" y="13" font-family="'Comic Sans MS', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif" font-weight="900" font-size="40" fill="#D84315" text-anchor="middle" letter-spacing="3">政治活動報告</text>
+      <!-- 画像内に配置されたマンガ風ポップ『政治活動報告』タイトルバッジ -->
+      <g filter="url(#popShadow)" transform="translate(256, 92)">
+        <rect x="-190" y="-40" width="380" height="80" rx="22" fill="#FF6D00"/>
+        <rect x="-184" y="-34" width="368" height="68" rx="17" fill="#FFFFFF"/>
+        <!-- ポップなフチ取りと影付きの「政治活動報告」文字 -->
+        <text x="2" y="15" font-family="'Comic Sans MS', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif" font-weight="900" font-size="38" fill="#FFAB91" text-anchor="middle" letter-spacing="2">政治活動報告</text>
+        <text x="0" y="12" font-family="'Comic Sans MS', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif" font-weight="900" font-size="38" fill="#D84315" text-anchor="middle" letter-spacing="2">政治活動報告</text>
       </g>
     </svg>
     """
