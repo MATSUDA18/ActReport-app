@@ -6,7 +6,7 @@ from PIL import Image
 
 st.set_page_config(page_title="活動報告投稿アプリ", layout="centered")
 
-# --- iPhone 17 Proでも確実に横3列に収めるための極限スリム化スタイル ---
+# --- スマホ画面で確実に横3列に収めるための極限スリム化スタイル ---
 st.markdown("""
 <style>
 /* アプリ全体の背景色（淡いオレンジ・ピーチトーン） */
@@ -75,14 +75,12 @@ st.markdown("#### ① 活動した日付を選択してください")
 st.caption("※カレンダーで報告したい期間（または単日）を選んでください。自動で曜日の場所が割り当てられます。")
 
 today = datetime.date.today()
-# デフォルトで今週の月曜日から金曜日（または今日）を選択
 date_range = st.date_input(
     "活動日を選択",
     value=(today - datetime.timedelta(days=3), today),
     label_visibility="collapsed"
 )
 
-# 選択された日付のリストを作成
 target_dates = []
 if isinstance(date_range, tuple):
     if len(date_range) == 2:
@@ -95,10 +93,9 @@ if isinstance(date_range, tuple):
 else:
     target_dates = [date_range]
 
-# 対象となる活動日（月・火・木・金）だけを抽出
 active_days_data = []
 for d in target_dates:
-    wd = d.weekday() # 0:月, 1:火, 2:水, 3:木, 4:金, 5:土, 6:日
+    wd = d.weekday() 
     if wd in activities_map:
         day_char, loc_name = activities_map[wd]
         date_str = d.strftime('%Y年%m月%d日')
@@ -112,7 +109,7 @@ for d in target_dates:
 if not active_days_data:
     st.warning("⚠️ 選択した期間内に活動日（月・火・木・金）が含まれていません。日付の範囲を広げてください。")
 
-# --- 曜日（日付）ごとの同行者設定 ---
+# --- 曜日（日付）ごとの同行者設定（森市長を追加） ---
 day_attendees = {}
 if active_days_data:
     st.markdown("---")
@@ -126,6 +123,7 @@ if active_days_data:
         with col_a1:
             att_none = st.checkbox("なし", key=f"att_none_{d_key}", value=True)
             att_mori = st.checkbox("森はるひさ県議", key=f"att_mori_{d_key}")
+            att_mayor = st.checkbox("森市長", key=f"att_mayor_{d_key}") # 追加
         with col_a2:
             att_miya = st.checkbox("宮川しょうけん市議", key=f"att_miya_{d_key}")
             att_mizu = st.checkbox("瑞穂市議の皆様", key=f"att_mizu_{d_key}")
@@ -133,6 +131,7 @@ if active_days_data:
         chosen = []
         if att_none: chosen.append("なし")
         if att_mori: chosen.append("森はるひさ県議")
+        if att_mayor: chosen.append("森市長")
         if att_miya: chosen.append("宮川しょうけん市議")
         if att_mizu: chosen.append("瑞穂市議の皆様")
         day_attendees[d_key] = chosen
@@ -297,7 +296,13 @@ if "final_post_text" in st.session_state:
         st.markdown("[➡️ Instagramアプリを開く](https://www.instagram.com/)", unsafe_allow_html=True)
         
     if post_fb:
-        fb_url = f"https://www.facebook.com/sharer/sharer.php?u=&quote={encoded_text}"
+        # ご指定のFacebookリンクを適用
+        fb_target_url = "https://www.facebook.com/share/1BzqwwS4bH/?mibextid=wwXIfr"
+        encoded_fb_target = urllib.parse.quote(fb_target_url)
+        fb_url = f"https://www.facebook.com/sharer/sharer.php?u={encoded_fb_target}"
+        
+        st.info("Facebookは仕様上、文章の自動ペーストができないため、下の文章をコピーしてからシェア画面を開いてください。")
+        st.code(text_to_share, language="text")
         st.markdown(f"[➡️ Facebookのシェア画面を開く]({fb_url})", unsafe_allow_html=True)
 
 # --- 一番下の画像の登録・削除管理機能 ---
