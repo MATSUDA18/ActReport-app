@@ -109,16 +109,13 @@ for d in target_dates:
 if not active_days_data:
     st.warning("⚠️ 選択した期間内に活動日（月・火・木・金）が含まれていません。日付の範囲を広げてください。")
 
-# --- 💡 同行者選択の自動解除コールバック関数 ---
+# --- 同行者選択の自動解除コールバック関数 ---
 def toggle_companion(d_key, target_key):
     none_key = f"att_none_{d_key}"
     other_keys = [f"att_mori_{d_key}", f"att_mayor_{d_key}", f"att_miya_{d_key}", f"att_mizu_{d_key}"]
     
-    # 他の同行者がチェックされた場合、「なし」を自動解除
     if target_key != none_key and st.session_state.get(target_key, False):
         st.session_state[none_key] = False
-    
-    # 「なし」がチェックされた場合、他のすべてのチェックを解除
     elif target_key == none_key and st.session_state.get(none_key, False):
         for k in other_keys:
             st.session_state[k] = False
@@ -133,7 +130,6 @@ if active_days_data:
         label_title = f"【{item['date_str']} ({item['day_char']}曜日)】 {item['location']}"
         st.markdown(f"**{label_title}** の同行者を選択")
         
-        # セッション状態の初期化
         none_k = f"att_none_{d_key}"
         mori_k = f"att_mori_{d_key}"
         mayor_k = f"att_mayor_{d_key}"
@@ -402,13 +398,13 @@ with st.expander("⚙️ 【普段は閉じています】用意された画像�
     else:
         st.info("登録されている画像はありません。上のフォームから画像を追加してください。")
 
-# --- アプリ用幾何学×水彩漫画風デザインアイコン ---
+# --- アプリ用ポップデザインアイコン（「政治活動報告」バッジ入り） ---
 st.markdown("---")
-with st.expander("🎨 スマホ用アプリアイコン画像のダウンロード（新デザイン）"):
-    st.write("正面で手を上げて挨拶する姿をモチーフにした、幾何学模様×水彩漫画風のおしゃれなデザインアイコンです。")
+with st.expander("🎨 スマホ用アプリアイコン画像のダウンロード（「政治活動報告」ポップ文字入り）"):
+    st.write("正面で手を上げる水彩漫画風のイラストに、ポップな『政治活動報告』のタイトルバッジが入ったデザインアイコンです。")
     st.caption("※下の画像をスマホで長押しして「写真に追加」を選択し、保存してご利用ください。")
     
-    # 幾何学×水彩漫画風アイコンデザイン（ガソリンスタンド削除・正面挙手・洗練デザイン）
+    # 幾何学×水彩漫画風 ＋ ポップな「政治活動報告」文字グラフィックバッジ
     svg_icon = """
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="220" height="220">
       <defs>
@@ -419,50 +415,56 @@ with st.expander("🎨 スマホ用アプリアイコン画像のダウンロー
         </linearGradient>
         <filter id="watercolor" x="-20%" y="-20%" width="140%" height="140%">
           <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise"/>
-          <feDisplacementMap in="SourceGraphic" in2="noise" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        <filter id="popShadow" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#D84315" flood-opacity="0.3"/>
         </filter>
       </defs>
 
-      <!-- カード外枠（マイルド幾何学ベース） -->
+      <!-- カード外枠（幾何学ベース） -->
       <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
 
-      <!-- 幾何学的アクセント（ソフトオーバル＆ヘキサゴンパターン） -->
+      <!-- 幾何学的アクセント背景 -->
       <circle cx="100" cy="120" r="90" fill="#FF8A65" opacity="0.25"/>
       <circle cx="420" cy="400" r="130" fill="#FB8C00" opacity="0.2"/>
       <polygon points="256,30 460,140 390,390 120,390 50,140" fill="#FF7043" opacity="0.12"/>
-      <circle cx="256" cy="280" r="160" fill="#FFFFFF" opacity="0.6"/>
+      <circle cx="256" cy="300" r="150" fill="#FFFFFF" opacity="0.65"/>
 
-      <!-- 水彩漫画風 人物キャラクター（正面・右手を上げて挨拶） -->
-      <g filter="url(#watercolor)" transform="translate(0, 15)">
-        <!-- オレンジのジャケット/アウター -->
-        <path d="M 165 460 Q 256 340 347 460 L 365 490 L 147 490 Z" fill="#FF6D00" opacity="0.9"/>
-        <path d="M 210 460 L 256 380 L 302 460 Z" fill="#FFFFFF" opacity="0.95"/>
-        <path d="M 242 415 L 256 455 L 270 415 Z" fill="#D84315"/>
+      <!-- 水彩漫画風 人物キャラクター（正面・右手挙手） -->
+      <g filter="url(#watercolor)" transform="translate(0, 35)">
+        <!-- オレンジジャケット -->
+        <path d="M 165 440 Q 256 320 347 440 L 365 470 L 147 470 Z" fill="#FF6D00" opacity="0.9"/>
+        <path d="M 210 440 L 256 360 L 302 440 Z" fill="#FFFFFF" opacity="0.95"/>
+        <path d="M 242 395 L 256 435 L 270 395 Z" fill="#D84315"/>
 
         <!-- 上げた右手（正面挙手） -->
-        <path d="M 315 390 C 375 320 380 230 365 200 C 350 185 335 205 330 230 C 315 280 295 350 295 390 Z" fill="#FF6D00"/>
-        <circle cx="365" cy="195" r="22" fill="#FFCC80"/>
+        <path d="M 315 370 C 375 300 380 210 365 180 C 350 165 335 185 330 210 C 315 260 295 330 295 370 Z" fill="#FF6D00"/>
+        <circle cx="365" cy="175" r="22" fill="#FFCC80"/>
 
-        <!-- 頭部・髪型・輪郭 -->
-        <ellipse cx="256" cy="275" rx="58" ry="68" fill="#FFCC80"/>
-        <path d="M 195 265 C 195 195 317 195 317 265 C 305 215 207 215 195 265 Z" fill="#4E342E"/>
+        <!-- 頭部・顔 -->
+        <ellipse cx="256" cy="255" rx="58" ry="68" fill="#FFCC80"/>
+        <path d="M 195 245 C 195 175 317 175 317 245 C 305 195 207 195 195 245 Z" fill="#4E342E"/>
 
-        <!-- メガネと表情（温かい笑顔） -->
-        <rect x="212" y="255" width="36" height="24" rx="7" fill="none" stroke="#3E2723" stroke-width="4.5"/>
-        <rect x="264" y="255" width="36" height="24" rx="7" fill="none" stroke="#3E2723" stroke-width="4.5"/>
-        <line x1="248" y1="267" x2="264" y2="267" stroke="#3E2723" stroke-width="4.5"/>
-        <circle cx="230" cy="267" r="3.5" fill="#3E2723"/>
-        <circle cx="282" cy="267" r="3.5" fill="#3E2723"/>
-        <path d="M 238 300 Q 256 316 274 300" fill="none" stroke="#D84315" stroke-width="4.5" stroke-linecap="round"/>
-        <!-- ほっぺ（水彩風チーク） -->
-        <ellipse cx="215" cy="288" rx="11" ry="6" fill="#FF8A65" opacity="0.5"/>
-        <ellipse cx="297" cy="288" rx="11" ry="6" fill="#FF8A65" opacity="0.5"/>
+        <!-- メガネと笑顔 -->
+        <rect x="212" y="235" width="36" height="24" rx="7" fill="none" stroke="#3E2723" stroke-width="4.5"/>
+        <rect x="264" y="235" width="36" height="24" rx="7" fill="none" stroke="#3E2723" stroke-width="4.5"/>
+        <line x1="248" y1="247" x2="264" y2="247" stroke="#3E2723" stroke-width="4.5"/>
+        <circle cx="230" cy="247" r="3.5" fill="#3E2723"/>
+        <circle cx="282" cy="247" r="3.5" fill="#3E2723"/>
+        <path d="M 238 280 Q 256 296 274 280" fill="none" stroke="#D84315" stroke-width="4.5" stroke-linecap="round"/>
+        <ellipse cx="215" cy="268" rx="11" ry="6" fill="#FF8A65" opacity="0.5"/>
+        <ellipse cx="297" cy="268" rx="11" ry="6" fill="#FF8A65" opacity="0.5"/>
       </g>
 
-      <!-- マンガ風バナータイトル -->
-      <rect x="40" y="42" width="432" height="108" rx="26" fill="#FFFFFF" stroke="#FF6D00" stroke-width="5" opacity="0.95"/>
-      <text x="256" y="88" font-family="'Comic Sans MS', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif" font-weight="900" font-size="34" fill="#E65100" text-anchor="middle">政治活動報告</text>
-      <text x="256" y="128" font-family="'Comic Sans MS', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif" font-weight="900" font-size="28" fill="#333333" text-anchor="middle">投稿アプリ</text>
+      <!-- ポップな『政治活動報告』グラフィックタイトルバッジ -->
+      <g filter="url(#popShadow)" transform="translate(256, 90)">
+        <rect x="-200" y="-42" width="400" height="84" rx="22" fill="#FF6D00"/>
+        <rect x="-194" y="-36" width="388" height="72" rx="17" fill="#FFFFFF"/>
+        <!-- 立体ポップな文字デザイン -->
+        <text x="2" y="16" font-family="'Comic Sans MS', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif" font-weight="900" font-size="40" fill="#FFAB91" text-anchor="middle" letter-spacing="3">政治活動報告</text>
+        <text x="0" y="13" font-family="'Comic Sans MS', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif" font-weight="900" font-size="40" fill="#D84315" text-anchor="middle" letter-spacing="3">政治活動報告</text>
+      </g>
     </svg>
     """
     st.markdown(svg_icon, unsafe_allow_html=True)
