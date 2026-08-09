@@ -399,13 +399,12 @@ with st.expander("⚙️ 【普段は閉じています】用意された画像�
     else:
         st.info("登録されている画像はありません。上のフォームから画像を追加してください。")
 
-# --- アプリ用ポップデザインアイコン（画像内に「政治活動報告」グラフィック完全固定） ---
+# --- アプリ用ポップデザインアイコン ---
 st.markdown("---")
 with st.expander("🎨 スマホ用アプリアイコン画像のダウンロード（「政治活動報告」完全画像データ化）"):
     st.write("画像の中にポップな『政治活動報告』の文字グラフィックと挨拶するイラストが綺麗に組み合わさったアイコンです。")
-    st.caption("※下の画像をスマホで長押しして「"写真"に追加」（またはイメージを保存）を選択してご利用ください。")
+    st.caption("※下の画像をスマホで長押しして「写真に追加」（またはイメージを保存）を選択してご利用ください。")
     
-    # 完全に崩れないBase64エンコード化されたアイコンSVGグラフィック
     svg_icon_data = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
       <defs>
         <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -418,30 +417,24 @@ with st.expander("🎨 スマホ用アプリアイコン画像のダウンロー
         </filter>
       </defs>
 
-      <!-- アイコン枠 -->
       <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
 
-      <!-- 幾何学的デザインパターン -->
       <circle cx="110" cy="110" r="95" fill="#FFFFFF" opacity="0.25"/>
       <circle cx="410" cy="410" r="125" fill="#FFFFFF" opacity="0.2"/>
       <polygon points="256,40 450,150 380,420 130,420 60,150" fill="#FFFFFF" opacity="0.12"/>
       <circle cx="256" cy="295" r="145" fill="#FFFFFF" opacity="0.85"/>
 
-      <!-- 人物イラスト（正面向き・右手挙手） -->
       <g transform="translate(0, 20)">
         <path d="M 160 450 Q 256 330 352 450 L 370 480 L 142 480 Z" fill="#FF6D00"/>
         <path d="M 210 450 L 256 370 L 302 450 Z" fill="#FFFFFF"/>
         <path d="M 242 400 L 256 440 L 270 400 Z" fill="#D84315"/>
 
-        <!-- 上げた右手 -->
         <path d="M 320 370 C 380 290 385 190 368 160 C 352 145 336 165 330 190 C 315 240 295 320 295 370 Z" fill="#FF6D00"/>
         <circle cx="368" cy="155" r="24" fill="#FFCC80"/>
 
-        <!-- 顔・髪型 -->
         <ellipse cx="256" cy="245" rx="58" ry="68" fill="#FFCC80"/>
         <path d="M 195 235 C 195 165 317 165 317 235 C 305 185 207 185 195 235 Z" fill="#4E342E"/>
 
-        <!-- メガネと笑顔 -->
         <rect x="210" y="225" width="38" height="26" rx="8" fill="none" stroke="#3E2723" stroke-width="5"/>
         <rect x="264" y="225" width="38" height="26" rx="8" fill="none" stroke="#3E2723" stroke-width="5"/>
         <line x1="248" y1="238" x2="264" y2="238" stroke="#3E2723" stroke-width="5"/>
@@ -452,7 +445,6 @@ with st.expander("🎨 スマホ用アプリアイコン画像のダウンロー
         <ellipse cx="300" cy="260" rx="10" ry="6" fill="#FF8A65" opacity="0.6"/>
       </g>
 
-      <!-- 上部にドーンと配置された「政治活動報告」バッジ -->
       <g filter="url(#popShadow)">
         <rect x="36" y="36" width="440" height="90" rx="24" fill="#FF5722"/>
         <rect x="42" y="42" width="428" height="78" rx="19" fill="#FFFFFF"/>
@@ -460,6 +452,5 @@ with st.expander("🎨 スマホ用アプリアイコン画像のダウンロー
       </g>
     </svg>"""
 
-    # Base64形式にエンコードして確実に画像表示
     b64_svg = base64.b64encode(svg_icon_data.strip().encode('utf-8')).decode('utf-8')
     st.image(f"data:image/svg+xml;base64,{b64_svg}", width=240)
