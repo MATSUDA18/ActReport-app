@@ -71,9 +71,20 @@ activities_map = {
     4: ("金", "穂積駅南口（挨拶活動）"),
 }
 
-# --- ① 日付の選択（カレンダー入力・複数日対応） ---
+# フォルダ準備
+IMAGE_DIR = "preset_images"
+if not os.path.exists(IMAGE_DIR):
+    os.makedirs(IMAGE_DIR)
+
+TEMP_DIR = "temp_uploads"
+if not os.path.exists(TEMP_DIR):
+    os.makedirs(TEMP_DIR)
+
+saved_images = sorted(os.listdir(IMAGE_DIR))
+
+# --- ① 一番上：日付の選択（カレンダー入力・複数日対応） ---
 st.markdown("#### ① 活動した日付を選択してください")
-st.caption("※カレンダーで報告したい期間（または単日）を選んでください。自動で曜日の場所が割り当てられます。")
+st.caption("※カレンダーで報告したい期間（または単日）を選んでください。")
 
 today = datetime.date.today()
 date_range = st.date_input(
@@ -110,209 +121,233 @@ for d in target_dates:
 if not active_days_data:
     st.warning("⚠️ 選択した期間内に活動日（月・火・木・金）が含まれていません。日付の範囲を広げてください。")
 
-# --- 同行者選択の自動解除コールバック関数 ---
-def toggle_companion(d_key, target_key):
-    none_key = f"att_none_{d_key}"
-    other_keys = [f"att_mori_{d_key}", f"att_mayor_{d_key}", f"att_miya_{d_key}", f"att_mizu_{d_key}"]
-    
-    if target_key != none_key and st.session_state.get(target_key, False):
-        st.session_state[none_key] = False
-    elif target_key == none_key and st.session_state.get(none_key, False):
-        for k in other_keys:
-            st.session_state[k] = False
-
-# --- 曜日（日付）ごとの同行者設定 ---
-day_attendees = {}
-if active_days_data:
-    st.markdown("---")
-    st.markdown("#### 👥 選択した活動日の同行者設定")
-    for item in active_days_data:
-        d_key = str(item["date_obj"])
-        label_title = f"【{item['date_str']} ({item['day_char']}曜日)】 {item['location']}"
-        st.markdown(f"**{label_title}** の同行者を選択")
-        
-        none_k = f"att_none_{d_key}"
-        mori_k = f"att_mori_{d_key}"
-        mayor_k = f"att_mayor_{d_key}"
-        miya_k = f"att_miya_{d_key}"
-        mizu_k = f"att_mizu_{d_key}"
-        
-        if none_k not in st.session_state:
-            st.session_state[none_k] = True
-        for k in [mori_k, mayor_k, miya_k, mizu_k]:
-            if k not in st.session_state:
-                st.session_state[k] = False
-        
-        col_a1, col_a2 = st.columns(2)
-        with col_a1:
-            st.checkbox("なし", key=none_k, on_change=toggle_companion, args=(d_key, none_k))
-            st.checkbox("森はるひさ県議", key=mori_k, on_change=toggle_companion, args=(d_key, mori_k))
-            st.checkbox("森市長", key=mayor_k, on_change=toggle_companion, args=(d_key, mayor_k))
-        with col_a2:
-            st.checkbox("宮川しょうけん市議", key=miya_k, on_change=toggle_companion, args=(d_key, miya_k))
-            st.checkbox("瑞穂市議の皆様", key=mizu_k, on_change=toggle_companion, args=(d_key, mizu_k))
-        
-        chosen = []
-        if st.session_state[none_k]: chosen.append("なし")
-        if st.session_state[mori_k]: chosen.append("森はるひさ県議")
-        if st.session_state[mayor_k]: chosen.append("森市長")
-        if st.session_state[miya_k]: chosen.append("宮川しょうけん市議")
-        if st.session_state[mizu_k]: chosen.append("瑞穂市議の皆様")
-        day_attendees[d_key] = chosen
-
-# --- ② 冒頭の挨拶 & フリー本文入力 ---
+# --- ② 2番目：画像選択方法の指定（ここで画面が切り替わります） ---
 st.markdown("---")
-st.markdown("#### ② 原稿の冒頭の挨拶と本文")
-greeting_options = [
-    "おはようございます！",
-    "こんにちは！",
-    "皆様お疲れ様です。",
-    "本日はまとめて活動報告をさせていただきます。",
-    "本日はここ数日の活動報告をさせていただきます。",
-    "本日は今週の活動報告をまとめてさせていただきます。",
-    "選択なし"
-]
-selected_greeting = st.radio("挨拶を選択", greeting_options, index=0)
-
-free_text_input = st.text_area(
-    "💬 フリー本文・補足メッセージを入力（任意）",
-    placeholder="例：本日は多くの方にお声がけいただき、大変励みになりました！温かいご声援ありがとうございます。",
-    height=100
+st.markdown("#### ② 使用する画像のタイプを選択してください")
+image_mode = st.radio(
+    "画像タイプ選択",
+    ["📁 用意された固定画像を選ぶ（ハッシュタグのみ）", "📱 スマホアルバムから写真を追加する（活動報告原稿つき）"],
+    label_visibility="collapsed"
 )
 
-# フォルダ準備
-IMAGE_DIR = "preset_images"
-if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR)
-
-TEMP_DIR = "temp_uploads"
-if not os.path.exists(TEMP_DIR):
-    os.makedirs(TEMP_DIR)
-
-saved_images = sorted(os.listdir(IMAGE_DIR))
-day_selected_images = {}
-
-# --- ③ 日付ごとの画像選択（横3列スリム） ---
-if active_days_data:
-    st.markdown("---")
-    st.markdown("#### 🖼️ ③ 活動日ごとの画像選択")
-    st.caption("※コンパクトな縦長サムネイルが横3列に並びます。")
-    
-    for item in active_days_data:
-        d_key = str(item["date_obj"])
-        st.markdown(f"**📅 【{item['date_str']} ({item['day_char']}曜日)】の画像**")
-        day_chosen_imgs = []
-        
-        if saved_images:
-            st.write("・登録済み画像から選択（横3列）:")
-            for i in range(0, len(saved_images), 3):
-                row_items = saved_images[i:i+3]
-                cols = st.columns(3)
-                for col_idx, img_name in enumerate(row_items):
-                    with cols[col_idx]:
-                        img_path = os.path.join(IMAGE_DIR, img_name)
-                        try:
-                            st.image(Image.open(img_path), width=50)
-                        except Exception:
-                            pass
-                        is_checked = st.checkbox(f"選択 {i+col_idx+1}", key=f"chk_{d_key}_{img_name}")
-                        if is_checked:
-                            day_chosen_imgs.append((img_name, img_path))
-        else:
-            st.info("登録済みの固定画像はありません。下のメニューから追加できます。")
-        
-        st.write("")
-        uploaded_day_files = st.file_uploader(
-            f"・スマホアルバムから写真追加【{item['date_str']}】",
-            type=["jpg", "jpeg", "png"],
-            accept_multiple_files=True,
-            key=f"day_upload_{d_key}"
-        )
-        
-        if uploaded_day_files:
-            st.write("追加された写真：")
-            for i in range(0, len(uploaded_day_files), 3):
-                row_files = uploaded_day_files[i:i+3]
-                cols_add = st.columns(3)
-                for col_idx, uf in enumerate(row_files):
-                    temp_path = os.path.join(TEMP_DIR, f"{d_key}_{uf.name}")
-                    with open(temp_path, "wb") as tw:
-                        tw.write(uf.getbuffer())
-                    with cols_add[col_idx]:
-                        try:
-                            st.image(Image.open(temp_path), width=50)
-                        except Exception:
-                            pass
-                        is_added_checked = st.checkbox(f"追加 {i+col_idx+1}", key=f"chk_temp_{d_key}_{uf.name}", value=True)
-                        if is_added_checked:
-                            day_chosen_imgs.append((uf.name, temp_path))
-        
-        day_selected_images[d_key] = day_chosen_imgs
-        st.markdown("---")
-
-# --- ④ ハッシュタグの選択と追加 ---
-st.markdown("#### #️⃣ ④ ハッシュタグの選択と追加")
-
+# 共通のハッシュタグ設定（デフォルトタグ＋追加タグ）
 default_tags = ["#瑞穂市", "#福祉", "#障がい福祉", "#WithYou", "#松田けんじ"]
-extra_tag_input = st.text_input("追加したいハッシュタグを入力（半角スペース区切り）", placeholder="例：#街頭活動 #朝のご挨拶")
 
-added_tags = []
-if extra_tag_input.strip():
-    for t in extra_tag_input.split():
-        if not t.startswith("#"):
-            t = "#" + t
-        added_tags.append(t)
+# ==========================================
+# パターンA：固定画像を選ぶ場合（ハッシュタグのみ・日付曜日不要）
+# ==========================================
+if "固定画像" in image_mode:
+    st.markdown("---")
+    st.markdown("#### 🖼️ 固定画像を選択")
+    
+    fixed_chosen_imgs = []
+    if saved_images:
+        st.write("・登録済み画像から選択（横3列）:")
+        for i in range(0, len(saved_images), 3):
+            row_items = saved_images[i:i+3]
+            cols = st.columns(3)
+            for col_idx, img_name in enumerate(row_items):
+                with cols[col_idx]:
+                    img_path = os.path.join(IMAGE_DIR, img_name)
+                    try:
+                        st.image(Image.open(img_path), width=50)
+                    except Exception:
+                        pass
+                    is_checked = st.checkbox(f"選択 {i+col_idx+1}", key=f"fixed_chk_{img_name}")
+                    if is_checked:
+                        fixed_chosen_imgs.append((img_name, img_path))
+    else:
+        st.info("登録済みの固定画像はありません。下の管理メニューから追加できます。")
 
-all_available_tags = default_tags + added_tags
+    # ハッシュタグ選択
+    st.markdown("---")
+    st.markdown("#### #️⃣ ハッシュタグの選択")
+    extra_tag_input_f = st.text_input("追加ハッシュタグ（半角スペース区切り）", placeholder="例：#街頭活動 #朝のご挨拶", key="extra_tag_f")
+    added_tags_f = []
+    if extra_tag_input_f.strip():
+        for t in extra_tag_input_f.split():
+            if not t.startswith("#"): t = "#" + t
+            added_tags_f.append(t)
+    
+    all_tags_f = default_tags + added_tags_f
+    selected_hashtags_f = []
+    tag_cols_f = st.columns(2)
+    for idx, tag in enumerate(all_tags_f):
+        with tag_cols_f[idx % 2]:
+            if st.checkbox(tag, value=True, key=f"htag_f_{idx}_{tag}"):
+                selected_hashtags_f.append(tag)
 
-st.write("使用するハッシュタグにチェックを入れてください：")
-selected_hashtags = []
-tag_cols = st.columns(2)
-for idx, tag in enumerate(all_available_tags):
-    with tag_cols[idx % 2]:
-        if st.checkbox(tag, value=True, key=f"htag_{idx}_{tag}"):
-            selected_hashtags.append(tag)
+    # 原稿生成ボタン（固定画像用：ハッシュタグのみ）
+    if st.button("📝 原稿を生成する（ハッシュタグのみ）", type="primary", use_container_width=True):
+        final_post_text = " ".join(selected_hashtags_f)
+        st.session_state["final_post_text"] = final_post_text
+        st.session_state["chosen_images_preview"] = fixed_chosen_imgs
 
-ig_tag_count = len(selected_hashtags)
-if ig_tag_count > 30:
-    st.error(f"⚠️ Instagramのハッシュタグ上限（30個）を超えています！ (現在: {ig_tag_count}個)")
+# ==========================================
+# パターンB：スマホアルバムから写真を追加する場合（従来の活動報告原稿）
+# ==========================================
 else:
-    st.caption(f"📸 Instagramハッシュタグ数: **{ig_tag_count} / 30個**")
+    # --- 同行者選択の自動解除コールバック ---
+    def toggle_companion(d_key, target_key):
+        none_key = f"att_none_{d_key}"
+        other_keys = [f"att_mori_{d_key}", f"att_mayor_{d_key}", f"att_miya_{d_key}", f"att_mizu_{d_key}"]
+        if target_key != none_key and st.session_state.get(target_key, False):
+            st.session_state[none_key] = False
+        elif target_key == none_key and st.session_state.get(none_key, False):
+            for k in other_keys:
+                st.session_state[k] = False
 
-# 原稿生成ボタン
-if st.button("📝 原稿を生成する", type="primary", use_container_width=True):
-    report_text = ""
-    if selected_greeting != "選択なし":
-        report_text += f"{selected_greeting}\n\n"
-    
-    if free_text_input.strip():
-        report_text += f"{free_text_input.strip()}\n\n"
-    
-    report_text += "【活動報告】\n\n"
-    
-    for item in active_days_data:
-        d_key = str(item["date_obj"])
-        loc = item["location"]
-        day_c = item["day_char"]
-        date_s = item["date_str"]
-        
-        att_list = day_attendees.get(d_key, ["なし"])
-        actual_att = [a for a in att_list if a != "なし"]
-        
-        if not actual_att:
-            report_text += f"・{date_s}（{day_c}）：{loc}にて活動を行いました。\n"
-        elif "瑞穂市議の皆様" in actual_att:
-            report_text += f"・{date_s}（{day_c}）：{loc}にて、多様な仲間の皆様と活動を行いました。\n"
-        else:
-            attendee_str = f"、{', '.join(actual_att)}の皆様"
-            report_text += f"・{date_s}（{day_c}）：{loc}にて{attendee_str}と活動を行いました。\n"
-    
-    hashtags_str = "\n" + " ".join(selected_hashtags) if selected_hashtags else ""
-    final_post_text = report_text + hashtags_str
-    st.session_state["final_post_text"] = final_post_text
+    day_attendees = {}
+    if active_days_data:
+        st.markdown("---")
+        st.markdown("#### 👥 選択した活動日の同行者設定")
+        for item in active_days_data:
+            d_key = str(item["date_obj"])
+            label_title = f"【{item['date_str']} ({item['day_char']}曜日)】 {item['location']}"
+            st.markdown(f"**{label_title}** の同行者を選択")
+            
+            none_k = f"att_none_{d_key}"
+            mori_k = f"att_mori_{d_key}"
+            mayor_k = f"att_mayor_{d_key}"
+            miya_k = f"att_miya_{d_key}"
+            mizu_k = f"att_mizu_{d_key}"
+            
+            if none_k not in st.session_state: st.session_state[none_k] = True
+            for k in [mori_k, mayor_k, miya_k, mizu_k]:
+                if k not in st.session_state: st.session_state[k] = False
+            
+            col_a1, col_a2 = st.columns(2)
+            with col_a1:
+                st.checkbox("なし", key=none_k, on_change=toggle_companion, args=(d_key, none_k))
+                st.checkbox("森はるひさ県議", key=mori_k, on_change=toggle_companion, args=(d_key, mori_k))
+                st.checkbox("森市長", key=mayor_k, on_change=toggle_companion, args=(d_key, mayor_k))
+            with col_a2:
+                st.checkbox("宮川しょうけん市議", key=miya_k, on_change=toggle_companion, args=(d_key, miya_k))
+                st.checkbox("瑞穂市議の皆様", key=mizu_k, on_change=toggle_companion, args=(d_key, mizu_k))
+            
+            chosen = []
+            if st.session_state[none_k]: chosen.append("なし")
+            if st.session_state[mori_k]: chosen.append("森はるひさ県議")
+            if st.session_state[mayor_k]: chosen.append("森市長")
+            if st.session_state[miya_k]: chosen.append("宮川しょうけん市議")
+            if st.session_state[mizu_k]: chosen.append("瑞穂市議の皆様")
+            day_attendees[d_key] = chosen
 
-# 生成結果表示
+    # 冒頭の挨拶 & フリー本文入力
+    st.markdown("---")
+    st.markdown("#### 💬 原稿の冒頭の挨拶と本文")
+    greeting_options = [
+        "おはようございます！",
+        "こんにちは！",
+        "皆様お疲れ様です。",
+        "本日はまとめて活動報告をさせていただきます。",
+        "本日はここ数日の活動報告をさせていただきます。",
+        "本日は今週の活動報告をまとめてさせていただきます。",
+        "選択なし"
+    ]
+    selected_greeting = st.radio("挨拶を選択", greeting_options, index=0)
+
+    free_text_input = st.text_area(
+        "フリー本文・補足メッセージを入力（任意）",
+        placeholder="例：本日は多くの方にお声がけいただき、大変励みになりました！温かいご声援ありがとうございます。",
+        height=100
+    )
+
+    # 選択した期間の日付ごとにスマホから写真追加
+    day_selected_images = {}
+    if active_days_data:
+        st.markdown("---")
+        st.markdown("#### 🖼️ 選択した期間の日付ごとの画像選択")
+        st.caption("※選んだ各日付ごとにスマホアルバムから写真を追加できます。")
+        
+        for item in active_days_data:
+            d_key = str(item["date_obj"])
+            st.markdown(f"**📅 【{item['date_str']} ({item['day_char']}曜日)】の写真追加**")
+            day_chosen_imgs = []
+            
+            uploaded_day_files = st.file_uploader(
+                f"写真を追加【{item['date_str']}】",
+                type=["jpg", "jpeg", "png"],
+                accept_multiple_files=True,
+                key=f"day_upload_{d_key}",
+                label_visibility="collapsed"
+            )
+            
+            if uploaded_day_files:
+                for i in range(0, len(uploaded_day_files), 3):
+                    row_files = uploaded_day_files[i:i+3]
+                    cols_add = st.columns(3)
+                    for col_idx, uf in enumerate(row_files):
+                        temp_path = os.path.join(TEMP_DIR, f"{d_key}_{uf.name}")
+                        with open(temp_path, "wb") as tw:
+                            tw.write(uf.getbuffer())
+                        with cols_add[col_idx]:
+                            try:
+                                st.image(Image.open(temp_path), width=50)
+                            except Exception:
+                                pass
+                            is_added_checked = st.checkbox(f"選択 {i+col_idx+1}", key=f"chk_temp_{d_key}_{uf.name}", value=True)
+                            if is_added_checked:
+                                day_chosen_imgs.append((uf.name, temp_path))
+            
+            day_selected_images[d_key] = day_chosen_imgs
+            st.markdown("---")
+
+    # ハッシュタグ選択
+    st.markdown("#### #️⃣ ハッシュタグの選択と追加")
+    extra_tag_input_s = st.text_input("追加したいハッシュタグを入力（半角スペース区切り）", placeholder="例：#街頭活動 #朝のご挨拶", key="extra_tag_s")
+    added_tags_s = []
+    if extra_tag_input_s.strip():
+        for t in extra_tag_input_s.split():
+            if not t.startswith("#"): t = "#" + t
+            added_tags_s.append(t)
+    
+    all_tags_s = default_tags + added_tags_s
+    selected_hashtags_s = []
+    tag_cols_s = st.columns(2)
+    for idx, tag in enumerate(all_tags_s):
+        with tag_cols_s[idx % 2]:
+            if st.checkbox(tag, value=True, key=f"htag_s_{idx}_{tag}"):
+                selected_hashtags_s.append(tag)
+
+    # 原稿生成ボタン（自由画像用：【活動報告】入り）
+    if st.button("📝 原稿を生成する（活動報告原稿）", type="primary", use_container_width=True):
+        report_text = ""
+        if selected_greeting != "選択なし":
+            report_text += f"{selected_greeting}\n\n"
+        
+        if free_text_input.strip():
+            report_text += f"{free_text_input.strip()}\n\n"
+        
+        report_text += "【活動報告】\n\n"
+        
+        for item in active_days_data:
+            d_key = str(item["date_obj"])
+            loc = item["location"]
+            day_c = item["day_char"]
+            date_s = item["date_str"]
+            
+            att_list = day_attendees.get(d_key, ["なし"])
+            actual_att = [a for a in att_list if a != "なし"]
+            
+            if not actual_att:
+                report_text += f"・{date_s}（{day_c}）：{loc}にて活動を行いました。\n"
+            elif "瑞穂市議の皆様" in actual_att:
+                report_text += f"・{date_s}（{day_c}）：{loc}にて、多様な仲間の皆様と活動を行いました。\n"
+            else:
+                attendee_str = f"、{', '.join(actual_att)}の皆様"
+                report_text += f"・{date_s}（{day_c}）：{loc}にて{attendee_str}と活動を行いました。\n"
+        
+        hashtags_str = "\n" + " ".join(selected_hashtags_s) if selected_hashtags_s else ""
+        final_post_text = report_text + hashtags_str
+        st.session_state["final_post_text"] = final_post_text
+        st.session_state["day_selected_images"] = day_selected_images
+
+# ==========================================
+# 生成結果 & SNS共有エリア
+# ==========================================
 if "final_post_text" in st.session_state:
+    st.markdown("---")
     final_post_text = st.session_state["final_post_text"]
     st.text_area("生成された原稿（確認・編集用）", final_post_text, height=220)
     
@@ -322,25 +357,8 @@ if "final_post_text" in st.session_state:
     else:
         st.caption(f"🐦 𝕏 文字数: **{char_count} / 280文字**")
     
-    st.markdown("#### 📁 日付ごとに選択された画像一覧")
-    for item in active_days_data:
-        d_key = str(item["date_obj"])
-        imgs = day_selected_images.get(d_key, [])
-        if imgs:
-            st.write(f"**【{item['date_str']}】の画像 ({len(imgs)}枚):**")
-            for i in range(0, len(imgs), 3):
-                row_imgs = imgs[i:i+3]
-                cols_prev = st.columns(3)
-                for idx, (img_name, img_path) in enumerate(row_imgs):
-                    with cols_prev[idx]:
-                        if os.path.exists(img_path):
-                            st.image(Image.open(img_path), width=50)
-        else:
-            st.write(f"**【{item['date_str']}】の画像:** なし")
-
-# --- SNS直接投稿・複数選択メニュー ---
-if "final_post_text" in st.session_state:
-    text_to_share = st.session_state["final_post_text"]
+    # SNS直接投稿・複数選択メニュー
+    text_to_share = final_post_text
     encoded_text = urllib.parse.quote(text_to_share)
     
     st.markdown("---")
