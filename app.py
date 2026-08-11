@@ -87,7 +87,7 @@ if "1）活動告知用" in post_type:
     if st.button("📝 告知用原稿を生成する", type="primary", use_container_width=True):
         text_parts = []
         if notice_date and "明日以降" in notice_timing:
-            date_str_n = notice_date.strftime('%Y年%m月%d日')
+            date_str_n = f"{notice_date.month}月{notice_date.day}日"
             text_parts.append(f"【{date_str_n} 告知】")
         
         if notice_text.strip():
@@ -98,7 +98,7 @@ if "1）活動告知用" in post_type:
         if text_parts:
             final_post_text = "\n\n".join(text_parts) + "\n\n" + hashtags_str_n
         else:
-            final_post_text = hashtags_str_n  # テキストがない場合はハッシュタグのみ
+            final_post_text = hashtags_str_n
             
         st.session_state["final_post_text"] = final_post_text
 
@@ -131,7 +131,8 @@ else:
         wd = d.weekday() 
         if wd in activities_map:
             day_char, loc_name = activities_map[wd]
-            date_str = d.strftime('%Y年%m月%d日')
+            # 2026年を省いた「月/日」形式に修正
+            date_str = f"{d.month}月{d.day}日"
             active_days_data.append({
                 "date_obj": d,
                 "date_str": date_str,
@@ -248,11 +249,10 @@ else:
             
             if not actual_att:
                 report_text += f"・{date_s}（{day_c}）：{loc}にて活動を行いました。\n"
-            elif "瑞穂市議の皆様" in actual_att:
-                report_text += f"・{date_s}（{day_c}）：{loc}にて、多様な仲間の皆様にご一緒させていただきました。\n"
             else:
+                # 「の皆様にご一緒」ではなく「にご一緒」になるよう修正
                 attendee_str = f"、{', '.join(actual_att)}"
-                report_text += f"・{date_s}（{day_c}）：{loc}にて{attendee_str}の皆様にご一緒させていただきました。\n"
+                report_text += f"・{date_s}（{day_c}）：{loc}にて{attendee_str}にご一緒させていただきました。\n"
         
         hashtags_str = "\n" + " ".join(selected_hashtags_r) if selected_hashtags_r else ""
         final_post_text = report_text + hashtags_str
