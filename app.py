@@ -1,13 +1,10 @@
 import streamlit as st
 import datetime
 import urllib.parse
-import os
-import base64
-from PIL import Image
 
-st.set_page_config(page_title="政治活動報告投稿", layout="centered")
+st.set_page_config(page_title="政治活動報告・告知投稿", layout="centered")
 
-# --- スマホ画面で確実に横3列に収めるための極限スリム化スタイル ---
+# --- アプリ全体のデザインスタイル ---
 st.markdown("""
 <style>
 /* アプリ全体の背景色（淡いオレンジ・ピーチトーン） */
@@ -17,51 +14,14 @@ st.markdown("""
 
 /* アプリ全体の左右の余白を詰めて横幅を最大限に活用する */
 .block-container {
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
-}
-
-/* スマホでもカラムを絶対に横3列に強制固定する */
-@media screen and (max-width: 768px) {
-    div[data-testid="stHorizontal"],
-    div[data-testid="horizontalBlock"],
-    .stHorizontal {
-        display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        width: 100% !important;
-        gap: 2px !important;
-    }
-    
-    div[data-testid="stHorizontal"] > div[data-testid="stColumn"],
-    div[data-testid="stHorizontal"] > div[data-testid="column"],
-    div[data-testid="horizontalBlock"] > div,
-    .stColumn {
-        width: 32% !important;
-        min-width: 32% !important;
-        max-width: 33% !important;
-        flex: 1 1 32% !important;
-        padding: 0px !important;
-        box-sizing: border-box !important;
-    }
-}
-
-/* サムネイル画像をさらにスリムにし、3列できれいに収める */
-div[data-testid="stColumn"] img,
-.stColumn img {
-    width: 50px !important;  
-    height: 70px !important; 
-    object-fit: cover !important;
-    background-color: #faebe2;
-    border-radius: 4px;
-    display: block;
-    margin: 0 auto;
+    padding-left: 0.8rem !important;
+    padding-right: 0.8rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # --- タイトル ---
-st.markdown("<h3 style='text-align: left; font-size: 22px; margin-bottom: 15px; color: #333333;'>政治活動報告投稿アプリ</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: left; font-size: 22px; margin-bottom: 15px; color: #333333;'>政治活動報告・告知 投稿アプリ</h3>", unsafe_allow_html=True)
 
 # 活動場所の定義（曜日ごと）
 activities_map = {
@@ -71,123 +31,118 @@ activities_map = {
     4: ("金", "穂積駅南口（挨拶活動）"),
 }
 
-# フォルダ準備
-IMAGE_DIR = "preset_images"
-if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR)
-
-TEMP_DIR = "temp_uploads"
-if not os.path.exists(TEMP_DIR):
-    os.makedirs(TEMP_DIR)
-
-saved_images = sorted(os.listdir(IMAGE_DIR))
-
-# --- ① 一番上：日付の選択（カレンダー入力・複数日対応） ---
-st.markdown("#### ① 活動した日付を選択してください")
-st.caption("※カレンダーで報告したい期間（または単日）を選んでください。")
-
-today = datetime.date.today()
-date_range = st.date_input(
-    "活動日を選択",
-    value=(today - datetime.timedelta(days=3), today),
-    label_visibility="collapsed"
-)
-
-target_dates = []
-if isinstance(date_range, tuple):
-    if len(date_range) == 2:
-        start_d, end_d = date_range
-        delta = end_d - start_d
-        for i in range(delta.days + 1):
-            target_dates.append(start_d + datetime.timedelta(days=i))
-    elif len(date_range) == 1:
-        target_dates = [date_range[0]]
-else:
-    target_dates = [date_range]
-
-active_days_data = []
-for d in target_dates:
-    wd = d.weekday() 
-    if wd in activities_map:
-        day_char, loc_name = activities_map[wd]
-        date_str = d.strftime('%Y年%m月%d日')
-        active_days_data.append({
-            "date_obj": d,
-            "date_str": date_str,
-            "day_char": day_char,
-            "location": loc_name
-        })
-
-if not active_days_data:
-    st.warning("⚠️ 選択した期間内に活動日（月・火・木・金）が含まれていません。日付の範囲を広げてください。")
-
-# --- ② 2番目：画像選択方法の指定（ここで画面が切り替わります） ---
-st.markdown("---")
-st.markdown("#### ② 使用する画像のタイプを選択してください")
-image_mode = st.radio(
-    "画像タイプ選択",
-    ["📁 用意された固定画像を選ぶ（ハッシュタグのみ）", "📱 スマホアルバムから写真を追加する（活動報告原稿つき）"],
-    label_visibility="collapsed"
-)
-
-# 共通のハッシュタグ設定（デフォルトタグ＋追加タグ）
+# 共通のハッシュタグ設定
 default_tags = ["#瑞穂市", "#福祉", "#障がい福祉", "#WithYou", "#松田けんじ"]
 
-# ==========================================
-# パターンA：固定画像を選ぶ場合（ハッシュタグのみ・日付曜日不要）
-# ==========================================
-if "固定画像" in image_mode:
-    st.markdown("---")
-    st.markdown("#### 🖼️ 固定画像を選択")
-    
-    fixed_chosen_imgs = []
-    if saved_images:
-        st.write("・登録済み画像から選択（横3列）:")
-        for i in range(0, len(saved_images), 3):
-            row_items = saved_images[i:i+3]
-            cols = st.columns(3)
-            for col_idx, img_name in enumerate(row_items):
-                with cols[col_idx]:
-                    img_path = os.path.join(IMAGE_DIR, img_name)
-                    try:
-                        st.image(Image.open(img_path), width=50)
-                    except Exception:
-                        pass
-                    is_checked = st.checkbox(f"選択 {i+col_idx+1}", key=f"fixed_chk_{img_name}")
-                    if is_checked:
-                        fixed_chosen_imgs.append((img_name, img_path))
-    else:
-        st.info("登録済みの固定画像はありません。下の管理メニューから追加できます。")
+# --- ① 最初の入り口：告知用か報告用かの選択 ---
+st.markdown("#### 📌 投稿の種類を選択してください")
+post_type = st.radio(
+    "投稿の種類",
+    ["1）活動告知用", "2）活動報告用"],
+    label_visibility="collapsed",
+    horizontal=True
+)
 
+st.markdown("---")
+
+# ==========================================
+# 【1】活動告知用紙の場合
+# ==========================================
+if "1）活動告知用" in post_type:
+    st.markdown("#### 📣 活動告知の設定")
+    
+    notice_timing = st.radio(
+        "告知のタイミング",
+        ["当日用（日付を入れない）", "明日以降（カレンダーで日付を指定）"],
+        horizontal=True
+    )
+    
+    notice_date = None
+    if "明日以降" in notice_timing:
+        notice_date = st.date_input("告知対象の日付を選択", value=datetime.date.today() + datetime.timedelta(days=1))
+    
+    notice_text = st.text_area(
+        "💬 告知の補足テキストを入力（任意）",
+        placeholder="例：本日は〇〇にて街頭活動を行います！お気軽にお声がけください。",
+        height=100
+    )
+    
     # ハッシュタグ選択
-    st.markdown("---")
     st.markdown("#### #️⃣ ハッシュタグの選択")
-    extra_tag_input_f = st.text_input("追加ハッシュタグ（半角スペース区切り）", placeholder="例：#街頭活動 #朝のご挨拶", key="extra_tag_f")
-    added_tags_f = []
-    if extra_tag_input_f.strip():
-        for t in extra_tag_input_f.split():
+    extra_tag_input_n = st.text_input("追加したいハッシュタグ（半角スペース区切り）", placeholder="例：#街頭活動 #朝のご挨拶", key="extra_tag_n")
+    added_tags_n = []
+    if extra_tag_input_n.strip():
+        for t in extra_tag_input_n.split():
             if not t.startswith("#"): t = "#" + t
-            added_tags_f.append(t)
+            added_tags_n.append(t)
     
-    all_tags_f = default_tags + added_tags_f
-    selected_hashtags_f = []
-    tag_cols_f = st.columns(2)
-    for idx, tag in enumerate(all_tags_f):
-        with tag_cols_f[idx % 2]:
-            if st.checkbox(tag, value=True, key=f"htag_f_{idx}_{tag}"):
-                selected_hashtags_f.append(tag)
+    all_tags_n = default_tags + added_tags_n
+    selected_hashtags_n = []
+    tag_cols_n = st.columns(2)
+    for idx, tag in enumerate(all_tags_n):
+        with tag_cols_n[idx % 2]:
+            if st.checkbox(tag, value=True, key=f"htag_n_{idx}_{tag}"):
+                selected_hashtags_n.append(tag)
 
-    # 原稿生成ボタン（固定画像用：ハッシュタグのみ）
-    if st.button("📝 原稿を生成する（ハッシュタグのみ）", type="primary", use_container_width=True):
-        final_post_text = " ".join(selected_hashtags_f)
+    if st.button("📝 告知用原稿を生成する", type="primary", use_container_width=True):
+        text_parts = []
+        if notice_date and "明日以降" in notice_timing:
+            date_str_n = notice_date.strftime('%Y年%m月%d日')
+            text_parts.append(f"【{date_str_n} 告知】")
+        
+        if notice_text.strip():
+            text_parts.append(notice_text.strip())
+            
+        hashtags_str_n = " ".join(selected_hashtags_n)
+        
+        if text_parts:
+            final_post_text = "\n\n".join(text_parts) + "\n\n" + hashtags_str_n
+        else:
+            final_post_text = hashtags_str_n  # テキストがない場合はハッシュタグのみ
+            
         st.session_state["final_post_text"] = final_post_text
-        st.session_state["chosen_images_preview"] = fixed_chosen_imgs
 
 # ==========================================
-# パターンB：スマホアルバムから写真を追加する場合（従来の活動報告原稿）
+# 【2】活動報告用紙の場合
 # ==========================================
 else:
-    # --- 同行者選択の自動解除コールバック ---
+    st.markdown("#### ① 活動した日付の期間を選択してください")
+    today = datetime.date.today()
+    date_range = st.date_input(
+        "活動日を選択",
+        value=(today - datetime.timedelta(days=3), today),
+        label_visibility="collapsed"
+    )
+
+    target_dates = []
+    if isinstance(date_range, tuple):
+        if len(date_range) == 2:
+            start_d, end_d = date_range
+            delta = end_d - start_d
+            for i in range(delta.days + 1):
+                target_dates.append(start_d + datetime.timedelta(days=i))
+        elif len(date_range) == 1:
+            target_dates = [date_range[0]]
+    else:
+        target_dates = [date_range]
+
+    active_days_data = []
+    for d in target_dates:
+        wd = d.weekday() 
+        if wd in activities_map:
+            day_char, loc_name = activities_map[wd]
+            date_str = d.strftime('%Y年%m月%d日')
+            active_days_data.append({
+                "date_obj": d,
+                "date_str": date_str,
+                "day_char": day_char,
+                "location": loc_name
+            })
+
+    if not active_days_data:
+        st.warning("⚠️ 選択した期間内に活動日（月・火・木・金）が含まれていません。日付の範囲を広げてください。")
+
+    # 同行者選択の自動解除コールバック
     def toggle_companion(d_key, target_key):
         none_key = f"att_none_{d_key}"
         other_keys = [f"att_mori_{d_key}", f"att_mayor_{d_key}", f"att_miya_{d_key}", f"att_mizu_{d_key}"]
@@ -200,7 +155,7 @@ else:
     day_attendees = {}
     if active_days_data:
         st.markdown("---")
-        st.markdown("#### 👥 選択した活動日の同行者設定")
+        st.markdown("#### ② 選択した活動日の同行者設定")
         for item in active_days_data:
             d_key = str(item["date_obj"])
             label_title = f"【{item['date_str']} ({item['day_char']}曜日)】 {item['location']}"
@@ -235,14 +190,14 @@ else:
 
     # 冒頭の挨拶 & フリー本文入力
     st.markdown("---")
-    st.markdown("#### 💬 原稿の冒頭の挨拶と本文")
+    st.markdown("#### ③ 冒頭の挨拶と本文の選択")
     greeting_options = [
         "おはようございます！",
         "こんにちは！",
         "皆様お疲れ様です。",
         "本日はまとめて活動報告をさせていただきます。",
         "本日はここ数日の活動報告をさせていただきます。",
-        "本日は今週の活動報告をまとめてさせていただきます。",
+        "本日は直近1週間の活動報告をさせていただきます。",
         "選択なし"
     ]
     selected_greeting = st.radio("挨拶を選択", greeting_options, index=0)
@@ -253,65 +208,26 @@ else:
         height=100
     )
 
-    # 選択した期間の日付ごとにスマホから写真追加
-    day_selected_images = {}
-    if active_days_data:
-        st.markdown("---")
-        st.markdown("#### 🖼️ 選択した期間の日付ごとの画像選択")
-        st.caption("※選んだ各日付ごとにスマホアルバムから写真を追加できます。")
-        
-        for item in active_days_data:
-            d_key = str(item["date_obj"])
-            st.markdown(f"**📅 【{item['date_str']} ({item['day_char']}曜日)】の写真追加**")
-            day_chosen_imgs = []
-            
-            uploaded_day_files = st.file_uploader(
-                f"写真を追加【{item['date_str']}】",
-                type=["jpg", "jpeg", "png"],
-                accept_multiple_files=True,
-                key=f"day_upload_{d_key}",
-                label_visibility="collapsed"
-            )
-            
-            if uploaded_day_files:
-                for i in range(0, len(uploaded_day_files), 3):
-                    row_files = uploaded_day_files[i:i+3]
-                    cols_add = st.columns(3)
-                    for col_idx, uf in enumerate(row_files):
-                        temp_path = os.path.join(TEMP_DIR, f"{d_key}_{uf.name}")
-                        with open(temp_path, "wb") as tw:
-                            tw.write(uf.getbuffer())
-                        with cols_add[col_idx]:
-                            try:
-                                st.image(Image.open(temp_path), width=50)
-                            except Exception:
-                                pass
-                            is_added_checked = st.checkbox(f"選択 {i+col_idx+1}", key=f"chk_temp_{d_key}_{uf.name}", value=True)
-                            if is_added_checked:
-                                day_chosen_imgs.append((uf.name, temp_path))
-            
-            day_selected_images[d_key] = day_chosen_imgs
-            st.markdown("---")
-
     # ハッシュタグ選択
-    st.markdown("#### #️⃣ ハッシュタグの選択と追加")
-    extra_tag_input_s = st.text_input("追加したいハッシュタグを入力（半角スペース区切り）", placeholder="例：#街頭活動 #朝のご挨拶", key="extra_tag_s")
-    added_tags_s = []
-    if extra_tag_input_s.strip():
-        for t in extra_tag_input_s.split():
+    st.markdown("---")
+    st.markdown("#### ④ ハッシュタグの選択と追加")
+    extra_tag_input_r = st.text_input("追加したいハッシュタグを入力（半角スペース区切り）", placeholder="例：#街頭活動 #朝のご挨拶", key="extra_tag_r")
+    added_tags_r = []
+    if extra_tag_input_r.strip():
+        for t in extra_tag_input_r.split():
             if not t.startswith("#"): t = "#" + t
-            added_tags_s.append(t)
+            added_tags_r.append(t)
     
-    all_tags_s = default_tags + added_tags_s
-    selected_hashtags_s = []
-    tag_cols_s = st.columns(2)
-    for idx, tag in enumerate(all_tags_s):
-        with tag_cols_s[idx % 2]:
-            if st.checkbox(tag, value=True, key=f"htag_s_{idx}_{tag}"):
-                selected_hashtags_s.append(tag)
+    all_tags_r = default_tags + added_tags_r
+    selected_hashtags_r = []
+    tag_cols_r = st.columns(2)
+    for idx, tag in enumerate(all_tags_r):
+        with tag_cols_r[idx % 2]:
+            if st.checkbox(tag, value=True, key=f"htag_r_{idx}_{tag}"):
+                selected_hashtags_r.append(tag)
 
-    # 原稿生成ボタン（自由画像用：【活動報告】入り）
-    if st.button("📝 原稿を生成する（活動報告原稿）", type="primary", use_container_width=True):
+    # 報告用原稿生成ボタン
+    if st.button("📝 活動報告用原稿を生成する", type="primary", use_container_width=True):
         report_text = ""
         if selected_greeting != "選択なし":
             report_text += f"{selected_greeting}\n\n"
@@ -333,23 +249,23 @@ else:
             if not actual_att:
                 report_text += f"・{date_s}（{day_c}）：{loc}にて活動を行いました。\n"
             elif "瑞穂市議の皆様" in actual_att:
-                report_text += f"・{date_s}（{day_c}）：{loc}にて、多様な仲間の皆様と活動を行いました。\n"
+                report_text += f"・{date_s}（{day_c}）：{loc}にて、多様な仲間の皆様にご一緒させていただきました。\n"
             else:
-                attendee_str = f"、{', '.join(actual_att)}の皆様"
-                report_text += f"・{date_s}（{day_c}）：{loc}にて{attendee_str}と活動を行いました。\n"
+                attendee_str = f"、{', '.join(actual_att)}"
+                report_text += f"・{date_s}（{day_c}）：{loc}にて{attendee_str}の皆様にご一緒させていただきました。\n"
         
-        hashtags_str = "\n" + " ".join(selected_hashtags_s) if selected_hashtags_s else ""
+        hashtags_str = "\n" + " ".join(selected_hashtags_r) if selected_hashtags_r else ""
         final_post_text = report_text + hashtags_str
         st.session_state["final_post_text"] = final_post_text
-        st.session_state["day_selected_images"] = day_selected_images
 
 # ==========================================
-# 生成結果 & SNS共有エリア
+# 生成結果 & SNS共有エリア（共通）
 # ==========================================
 if "final_post_text" in st.session_state:
     st.markdown("---")
+    st.markdown("#### 📝 生成された原稿（確認・編集用）")
     final_post_text = st.session_state["final_post_text"]
-    st.text_area("生成された原稿（確認・編集用）", final_post_text, height=220)
+    st.text_area("原稿プレビュー", final_post_text, height=220, label_visibility="collapsed")
     
     char_count = len(final_post_text)
     if char_count > 280:
@@ -357,13 +273,12 @@ if "final_post_text" in st.session_state:
     else:
         st.caption(f"🐦 𝕏 文字数: **{char_count} / 280文字**")
     
-    # SNS直接投稿・複数選択メニュー
     text_to_share = final_post_text
     encoded_text = urllib.parse.quote(text_to_share)
     
     st.markdown("---")
     st.subheader("🚀 SNSへ投稿する（複数選択可）")
-    st.caption("※投稿したいSNSにいくつでもチェックを入れてください。")
+    st.caption("※投稿したいSNSにチェックを入れ、文章をコピーするかボタンから投稿してください。")
     
     post_x = st.checkbox("🐦 𝕏 (Twitter) で投稿する")
     post_ig = st.checkbox("📷 Instagram（テキスト自動コピー＋アプリ起動）")
@@ -386,89 +301,3 @@ if "final_post_text" in st.session_state:
         st.info("Facebookは仕様上、文章の自動ペーストができないため、下の文章をコピーしてからシェア画面を開いてください。")
         st.code(text_to_share, language="text")
         st.markdown(f"[➡️ Facebookのシェア画面を開く]({fb_url})", unsafe_allow_html=True)
-
-# --- 一番下の画像の登録・削除管理機能 ---
-st.markdown("---")
-with st.expander("⚙️ 【普段は閉じています】用意された画像の登録・削除管理"):
-    new_preset = st.file_uploader("新しいプリセット画像を登録する（複数可）", type=["jpg", "jpeg", "png"], accept_multiple_files=True, key="preset_upload")
-    if new_preset:
-        for f in new_preset:
-            save_path = os.path.join(IMAGE_DIR, f.name)
-            with open(save_path, "wb") as w:
-                w.write(f.getbuffer())
-        st.success("新しい画像を登録しました！ページを更新して反映させてください。")
-    
-    existing_images = os.listdir(IMAGE_DIR)
-    if existing_images:
-        st.write("現在登録されている画像:")
-        for img_name in existing_images:
-            col_a, col_b, col_c = st.columns([1, 3, 1])
-            with col_a:
-                try:
-                    st.image(Image.open(os.path.join(IMAGE_DIR, img_name)), width=40)
-                except Exception:
-                    pass
-            with col_b:
-                st.write(img_name)
-            with col_c:
-                if st.button("削除", key=f"del_{img_name}"):
-                    os.remove(os.path.join(IMAGE_DIR, img_name))
-                    st.rerun()
-    else:
-        st.info("登録されている画像はありません。上のフォームから画像を追加してください。")
-
-# --- アプリ用ポップデザインアイコン ---
-st.markdown("---")
-with st.expander("🎨 スマホ用アプリアイコン画像のダウンロード（「政治活動報告」完全画像データ化）"):
-    st.write("画像の中にポップな『政治活動報告』の文字グラフィックと挨拶するイラストが綺麗に組み合わさったアイコンです。")
-    st.caption("※下の画像をスマホで長押しして「写真に追加」（またはイメージを保存）を選択してご利用ください。")
-    
-    svg_icon_data = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-      <defs>
-        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#FFE0B2"/>
-          <stop offset="50%" stop-color="#FFB74D"/>
-          <stop offset="100%" stop-color="#FF7043"/>
-        </linearGradient>
-        <filter id="popShadow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#BE360A" flood-opacity="0.4"/>
-        </filter>
-      </defs>
-
-      <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
-
-      <circle cx="110" cy="110" r="95" fill="#FFFFFF" opacity="0.25"/>
-      <circle cx="410" cy="410" r="125" fill="#FFFFFF" opacity="0.2"/>
-      <polygon points="256,40 450,150 380,420 130,420 60,150" fill="#FFFFFF" opacity="0.12"/>
-      <circle cx="256" cy="295" r="145" fill="#FFFFFF" opacity="0.85"/>
-
-      <g transform="translate(0, 20)">
-        <path d="M 160 450 Q 256 330 352 450 L 370 480 L 142 480 Z" fill="#FF6D00"/>
-        <path d="M 210 450 L 256 370 L 302 450 Z" fill="#FFFFFF"/>
-        <path d="M 242 400 L 256 440 L 270 400 Z" fill="#D84315"/>
-
-        <path d="M 320 370 C 380 290 385 190 368 160 C 352 145 336 165 330 190 C 315 240 295 320 295 370 Z" fill="#FF6D00"/>
-        <circle cx="368" cy="155" r="24" fill="#FFCC80"/>
-
-        <ellipse cx="256" cy="245" rx="58" ry="68" fill="#FFCC80"/>
-        <path d="M 195 235 C 195 165 317 165 317 235 C 305 185 207 185 195 235 Z" fill="#4E342E"/>
-
-        <rect x="210" y="225" width="38" height="26" rx="8" fill="none" stroke="#3E2723" stroke-width="5"/>
-        <rect x="264" y="225" width="38" height="26" rx="8" fill="none" stroke="#3E2723" stroke-width="5"/>
-        <line x1="248" y1="238" x2="264" y2="238" stroke="#3E2723" stroke-width="5"/>
-        <circle cx="229" cy="238" r="4" fill="#3E2723"/>
-        <circle cx="283" cy="238" r="4" fill="#3E2723"/>
-        <path d="M 236 272 Q 256 290 276 272" fill="none" stroke="#D84315" stroke-width="5" stroke-linecap="round"/>
-        <ellipse cx="212" cy="260" rx="10" ry="6" fill="#FF8A65" opacity="0.6"/>
-        <ellipse cx="300" cy="260" rx="10" ry="6" fill="#FF8A65" opacity="0.6"/>
-      </g>
-
-      <g filter="url(#popShadow)">
-        <rect x="36" y="36" width="440" height="90" rx="24" fill="#FF5722"/>
-        <rect x="42" y="42" width="428" height="78" rx="19" fill="#FFFFFF"/>
-        <text x="256" y="96" font-family="sans-serif, system-ui, -apple-system" font-weight="900" font-size="42" fill="#D84315" text-anchor="middle" letter-spacing="3">政治活動報告</text>
-      </g>
-    </svg>"""
-
-    b64_svg = base64.b64encode(svg_icon_data.strip().encode('utf-8')).decode('utf-8')
-    st.image(f"data:image/svg+xml;base64,{b64_svg}", width=240)
